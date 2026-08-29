@@ -73,3 +73,7 @@ Thumbs.db
 
 # Streamlit Cache
 .streamlit/
+
+# Additional experiment models (not committed)
+ml/models/experiments/*.joblib
+!ml/models/experiments/exp_0_baseline.joblib
