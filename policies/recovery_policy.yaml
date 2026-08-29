@@ -1,0 +1,25 @@
+# RecoverAI - Safety & Guardrail Policy Configuration
+
+# Recovery Probability Thresholds
+recovery:
+  automatic_threshold: 0.50            # Minimum ML probability required for auto-recovery
+  high_confidence_threshold: 0.80      # High confidence threshold for premium routing
+
+# Retry Limits
+retry:
+  max_attempts: 2                      # Maximum allowed payment retry attempts
+
+# Amount Boundaries
+amount_limits:
+  automatic_action_max: 25000.00       # Maximum transaction amount (INR) for automated action
+  human_approval_threshold: 25000.00     # Transactions > ₹25,000 strictly require merchant approval
+
+# Customer Contact Frequency
+contact:
+  max_contacts_per_day: 1              # Maximum customer contacts per 24 hours
+
+# Safety & Hard Stopping Rules
+stopping_rules:
+  stop_after_repeated_failure: true    # Stop auto-retry if previous failures >= 2
+  stop_on_risk_related_failure: true   # Block auto-recovery on suspected risk or high IP risk
+  stop_on_invalid_payment_method: true # Block retry on expired/invalid cards

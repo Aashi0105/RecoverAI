@@ -1,0 +1,163 @@
+{
+  "selected_model": "Logistic Regression",
+  "validation_metrics": {
+    "Logistic Regression": {
+      "accuracy": 0.7333,
+      "precision": 0.7692,
+      "recall": 0.9091,
+      "f1": 0.8333,
+      "roc_auc": 0.7045,
+      "pr_auc": 0.8779,
+      "brier_score": 0.1921,
+      "confusion_matrix": {
+        "tn": 1,
+        "fp": 3,
+        "fn": 1,
+        "tp": 10
+      },
+      "fpr": 0.75,
+      "fnr": 0.0909
+    },
+    "Random Forest": {
+      "accuracy": 0.7333,
+      "precision": 0.7333,
+      "recall": 1.0,
+      "f1": 0.8462,
+      "roc_auc": 0.6818,
+      "pr_auc": 0.8643,
+      "brier_score": 0.1845,
+      "confusion_matrix": {
+        "tn": 0,
+        "fp": 4,
+        "fn": 0,
+        "tp": 11
+      },
+      "fpr": 1.0,
+      "fnr": 0.0
+    },
+    "XGBoost": {
+      "accuracy": 0.8,
+      "precision": 0.7857,
+      "recall": 1.0,
+      "f1": 0.88,
+      "roc_auc": 0.6591,
+      "pr_auc": 0.8757,
+      "brier_score": 0.2123,
+      "confusion_matrix": {
+        "tn": 1,
+        "fp": 3,
+        "fn": 0,
+        "tp": 11
+      },
+      "fpr": 0.75,
+      "fnr": 0.0
+    }
+  },
+  "test_metrics": {
+    "accuracy": 0.8125,
+    "precision": 0.8,
+    "recall": 1.0,
+    "f1": 0.8889,
+    "roc_auc": 0.6667,
+    "pr_auc": 0.8597,
+    "brier_score": 0.1612,
+    "confusion_matrix": {
+      "tn": 1,
+      "fp": 3,
+      "fn": 0,
+      "tp": 12
+    },
+    "fpr": 0.75,
+    "fnr": 0.0
+  },
+  "top_10_features": [
+    [
+      "failure_reason_insufficient_funds",
+      0.8544697298552988
+    ],
+    [
+      "failure_category_payment_method_problem",
+      0.7957230154428931
+    ],
+    [
+      "day_of_week",
+      0.7547598396405468
+    ],
+    [
+      "payment_method_netbanking",
+      0.7359217182635095
+    ],
+    [
+      "failure_reason_suspected_risk",
+      0.6635176906388913
+    ],
+    [
+      "failure_category_risk_related",
+      0.6635176906388913
+    ],
+    [
+      "payment_method_wallet",
+      0.6601905545691032
+    ],
+    [
+      "amount_vs_customer_average",
+      0.6191934322980664
+    ],
+    [
+      "velocity_score",
+      0.6136895113556358
+    ],
+    [
+      "failure_category_transient",
+      0.5620096293816875
+    ]
+  ],
+  "business_impact": {
+    "total_failed_count": 16,
+    "total_failed_value": 46928.28,
+    "actual_recovered_revenue": 25283.94,
+    "predicted_recoverable_revenue": 45803.1,
+    "expected_recovery_value": 39606.97,
+    "actual_recovered_selected_revenue": 25283.94,
+    "revenue_capture_recall": 1.0,
+    "revenue_precision": 0.552
+  },
+  "threshold_analysis": [
+    {
+      "threshold": 0.5,
+      "payments_selected": 15,
+      "percentage_selected": 93.75,
+      "revenue_selected": 45803.1,
+      "actual_recovered_revenue": 25283.94,
+      "recovery_rate_pct": 55.2,
+      "missed_recoverable_revenue": 0.0
+    },
+    {
+      "threshold": 0.7,
+      "payments_selected": 11,
+      "percentage_selected": 68.75,
+      "revenue_selected": 37012.29,
+      "actual_recovered_revenue": 18697.13,
+      "recovery_rate_pct": 50.52,
+      "missed_recoverable_revenue": 6586.81
+    },
+    {
+      "threshold": 0.8,
+      "payments_selected": 11,
+      "percentage_selected": 68.75,
+      "revenue_selected": 37012.29,
+      "actual_recovered_revenue": 18697.13,
+      "recovery_rate_pct": 50.52,
+      "missed_recoverable_revenue": 6586.81
+    },
+    {
+      "threshold": 0.9,
+      "payments_selected": 7,
+      "percentage_selected": 43.75,
+      "revenue_selected": 29689.32,
+      "actual_recovered_revenue": 11374.16,
+      "recovery_rate_pct": 38.31,
+      "missed_recoverable_revenue": 13909.78
+    }
+  ]
+}

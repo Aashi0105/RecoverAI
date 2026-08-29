@@ -1,0 +1,38 @@
+{
+  "test_set_evaluation": {
+    "default_0_50_policy": {
+      "threshold": 0.5,
+      "payments_selected": 504,
+      "intervention_rate_pct": 79.62,
+      "expected_gross_recovery_value": 841524.3,
+      "action_costs_incurred": 4498.0,
+      "expected_net_value": 837026.3,
+      "realized_recovered_revenue": 835012.8,
+      "accuracy": 0.7046,
+      "precision": 0.7029,
+      "recall": 0.8909,
+      "f1": 0.7858,
+      "tp": 343,
+      "fp": 145,
+      "tn": 103,
+      "fn": 42
+    },
+    "optimized_policy": {
+      "threshold": 0.35,
+      "payments_selected": 569,
+      "intervention_rate_pct": 89.89,
+      "expected_gross_recovery_value": 900884.2,
+      "action_costs_incurred": 5166.0,
+      "expected_net_value": 895718.2,
+      "realized_recovered_revenue": 900001.4,
+      "accuracy": 0.6872,
+      "precision": 0.6714,
+      "recall": 0.9584,
+      "f1": 0.7895,
+      "tp": 369,
+      "fp": 181,
+      "tn": 67,
+      "fn": 16
+    }
+  }
+}
