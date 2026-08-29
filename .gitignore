@@ -77,3 +77,23 @@ Thumbs.db
 # Additional experiment models (not committed)
 ml/models/experiments/*.joblib
 !ml/models/experiments/exp_0_baseline.joblib
+
+# Temporary development, audit and verification scripts
+audit_*.py
+backup_*.py
+check_*.py
+create_*.py
+debug_*.py
+execute_*.py
+forensic_*.py
+generate_*.py
+mechanical_*.py
+rebuild_*.py
+regenerate_*.py
+run_*.py
+scratch_*.py
+search_*.py
+test_*.py
+trace_*.py
+update_*.py
+verify_*.py
