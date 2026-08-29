@@ -218,7 +218,7 @@ pytest tests/ -v
 
 ```bash
 # Clone repository
-git clone https://github.com/Aashi105/RecoverAI.git
+git clone https://github.com/Aashi0105/RecoverAI.git
 cd RecoverAI
 
 # Create virtual environment
