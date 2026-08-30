@@ -23,7 +23,8 @@ Evaluated on the untouched 15% test set ($N = 633$ failed payments, stratified r
 | :--- | :---: | :---: | :---: |
 | **Intervention Count** | 442 transactions | **545 transactions** | $+103$ transactions |
 | **Intervention Rate (%)** | 69.83% | **86.10%** | $+16.27\%$ coverage |
-| **Realized Gross Recovered Revenue** | ₹835,012.80 | **₹900,001.40** | **$+\text{₹}64,988.60$ gross cash captured (+4.11%)** |
+| **Realized Gross Recovered Revenue** | ₹835,012.80 | **₹900,001.40** | **$+\text{₹}64,988.60$ gross revenue uplift (+4.11%)** |
+
 | **Action Costs Incurred** | ₹3,039.00 | **₹3,668.00** | $+\text{₹}629.00$ cost investment |
 | **True Net Realized Revenue** | ₹831,973.80 | **₹896,333.40** | **$+\text{₹}64,359.60$ true net uplift (+4.07%)** |
 | **% Revenue at Risk Captured** | 52.86% | **56.97%** | **$+4.11\%$ total risk captured** |
@@ -111,7 +112,8 @@ The machine learning model recommends recovery probability, but **deterministic 
 
 ## 📈 Machine Learning & Decision Optimization
 
-* **Active Production Model**: `EXP_0` Baseline Logistic Regression pipeline saved at `ml/models/experiments/exp_0_baseline.joblib`.
+* **Active Runtime Model**: `EXP_0` Baseline Logistic Regression pipeline saved at `ml/models/experiments/exp_0_baseline.joblib`.
+
 * **Preprocessing Pipeline**: `ColumnTransformer` combining `StandardScaler` on numerical features (`amount`, `hour`, `day_of_week`) and `OneHotEncoder(handle_unknown="ignore")` on categorical features (`payment_method`, `failure_reason`).
 * **Engineered Features**: `customer_past_recovery_rate_pre_current`, `consecutive_failure_streak`, `ip_risk_score`, `velocity_score`.
 * **Decision Optimization**: Expected Value thresholding ($\tau = 0.35$) selects the optimal policy boundary that maximizes net revenue after deducting action execution costs (Retry: ₹5.00, Reminder: ₹2.00, Payment Link: ₹12.00).
