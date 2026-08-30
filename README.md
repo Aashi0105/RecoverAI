@@ -34,7 +34,25 @@ Evaluated on the untouched 15% test set ($N = 633$ failed payments, stratified r
 
 ---
 
+## 🔍 Reality Matrix
+
+| Component | Reality / Status |
+| :--- | :--- |
+| **ML recovery prediction** | Real, trained `EXP_0` Logistic Regression model |
+| **Safety gate / policy decisions** | Real, deterministic, implemented and tested |
+| **EV optimization & net uplift** | Real calculation, measured offline on the held-out test set |
+| **Causal treatment effect** | IPW methodology evaluated offline on synthetic transaction logs; not a live randomized A/B test |
+| **Razorpay payment link creation** | Real integration, Razorpay Test Mode only |
+| **Idempotency / concurrency safety** | Real implementation with database constraints and concurrent-thread testing |
+| **Drift detection (PSI)** | Real monitoring implementation; no automated retraining |
+| **Underlying transaction dataset** | Synthetic/generated data, not real merchant transaction data |
+| **Production-scale load / throughput** | Not benchmarked |
+| **Live production payment execution** | Not implemented; Test Mode only by design |
+
+---
+
 ## 🧠 How RecoverAI Works
+
 
 1. **Context Loading**: Failed payment payload enters the system with transaction attributes (amount, failure reason, payment method, customer history, risk scores).
 2. **ML Recovery Prediction**: `EXP_0` Logistic Regression model estimates the probability of recovery $P(\text{recovered} \mid \text{features})$.
