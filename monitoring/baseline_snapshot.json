@@ -1,0 +1,129 @@
+{
+  "metadata": {
+    "dataset_source": "data/raw/transactions.csv",
+    "dev_sample_size": 3581,
+    "seed": 42
+  },
+  "numeric": {
+    "amount": {
+      "bin_edges": [
+        -Infinity,
+        606.2,
+        877.54,
+        1150.9500000000003,
+        1458.34,
+        1824.88,
+        2230.67,
+        2806.6000000000013,
+        3747.42,
+        5258.09,
+        Infinity
+      ],
+      "percentages": [
+        0.09997207483943032,
+        0.09997207483943032,
+        0.10025132644512706,
+        0.09969282323373359,
+        0.09997207483943032,
+        0.09997207483943032,
+        0.10025132644512706,
+        0.09969282323373359,
+        0.09997207483943032,
+        0.10025132644512706
+      ],
+      "total_count": 3581
+    },
+    "hour": {
+      "bin_edges": [
+        -Infinity,
+        2.0,
+        4.0,
+        7.0,
+        9.0,
+        12.0,
+        14.0,
+        16.0,
+        19.0,
+        21.0,
+        Infinity
+      ],
+      "percentages": [
+        0.07819044959508517,
+        0.08824350740016755,
+        0.12119519687238202,
+        0.07846970120078191,
+        0.13264451270594807,
+        0.0793074560178721,
+        0.08740575258307735,
+        0.12007819044959508,
+        0.08461323652611002,
+        0.12985199664898073
+      ],
+      "total_count": 3581
+    },
+    "day_of_week": {
+      "bin_edges": [
+        -Infinity,
+        1.0,
+        2.0,
+        3.0,
+        4.0,
+        5.0,
+        Infinity
+      ],
+      "percentages": [
+        0.14437308014521083,
+        0.14102206087685004,
+        0.12733873219771014,
+        0.15051661547053896,
+        0.15302987992180955,
+        0.2837196313878805
+      ],
+      "total_count": 3581
+    }
+  },
+  "categorical": {
+    "payment_method": {
+      "categories": [
+        "card",
+        "upi",
+        "netbanking",
+        "wallet"
+      ],
+      "percentages": {
+        "card": 0.405473331471656,
+        "upi": 0.3367774364702597,
+        "netbanking": 0.16950572465791677,
+        "wallet": 0.08824350740016755
+      },
+      "total_count": 3581
+    },
+    "failure_reason": {
+      "categories": [
+        "network_timeout",
+        "insufficient_funds",
+        "technical_error",
+        "authentication_failed",
+        "card_expired",
+        "limit_exceeded",
+        "invalid_card",
+        "suspected_risk",
+        "bank_declined",
+        "customer_cancelled"
+      ],
+      "percentages": {
+        "network_timeout": 0.22228427813459928,
+        "insufficient_funds": 0.16699246020664618,
+        "technical_error": 0.14716559620217817,
+        "authentication_failed": 0.11840268081541469,
+        "card_expired": 0.08796425579447081,
+        "limit_exceeded": 0.08712650097738062,
+        "invalid_card": 0.07009215302987992,
+        "suspected_risk": 0.04021223122032952,
+        "bank_declined": 0.03797821837475566,
+        "customer_cancelled": 0.021781625244345154
+      },
+      "total_count": 3581
+    }
+  }
+}

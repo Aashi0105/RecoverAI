@@ -276,8 +276,9 @@ def run_drift_report(
 
     # Print clean report to console
     print("\n" + "=" * 65)
-    print(" 📊 RECOVERAI FEATURE DRIFT REPORT (PSI AUDIT)")
+    print(" RECOVERAI FEATURE DRIFT REPORT (PSI AUDIT)")
     print("=" * 65)
+
     print(f"{'FEATURE':<20} | {'PSI SCORE':<10} | {'STATUS':<18} | {'RECOMMENDATION'}")
     print("-" * 65)
     for row in report_features:
