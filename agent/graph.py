@@ -25,14 +25,15 @@ from agent.demo_data import build_test_transaction
 def route_after_policy(state: AgentState) -> str:
     """
     Conditional Edge Router:
-    - APPROVED -> execute_mock_action
-    - BLOCKED / HUMAN_APPROVAL -> create_audit_log (skips execution entirely)
+    - ACT / APPROVED -> execute_mock_action
+    - REFUSE / ESCALATE -> create_audit_log (skips execution entirely)
     """
-    decision = state.get("policy_decision", "BLOCKED")
-    if decision == "APPROVED":
+    decision = state.get("policy_decision", "REFUSE")
+    if decision in ["ACT", "APPROVED"]:
         return "execute_mock_action"
     else:
         return "create_audit_log"
+
 
 
 def build_recovery_graph():

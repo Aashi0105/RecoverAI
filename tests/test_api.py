@@ -20,7 +20,7 @@ def test_health_endpoint():
 
 
 def test_trigger_recovery_valid_approved():
-    """Verify POST /api/v1/recovery/trigger for high-confidence transient failure returns 200 OK APPROVED."""
+    """Verify POST /api/v1/recovery/trigger for high-confidence transient failure returns 200 OK APPROVED (ACT)."""
     payload = {
         "transaction_id": "txn_api_001",
         "customer_id": "cust_api_001",
@@ -37,14 +37,15 @@ def test_trigger_recovery_valid_approved():
     assert response.status_code == 200
     data = response.json()
     assert data["transaction_id"] == "txn_api_001"
-    assert data["policy_decision"] == "APPROVED"
+    assert data["policy_decision"] == "ACT"
+    assert data["agent_status"] in ["APPROVED", "COMPLETED"]
     assert data["action_status"] == "executed"
     assert data["selected_action"] is not None
     assert "audit_event" in data
 
 
 def test_trigger_recovery_blocked_policy():
-    """Verify POST /api/v1/recovery/trigger for retry-limit-exceeded returns 200 OK BLOCKED."""
+    """Verify POST /api/v1/recovery/trigger for retry-limit-exceeded returns 200 OK REFUSE."""
     payload = {
         "transaction_id": "txn_api_002",
         "customer_id": "cust_api_002",
@@ -52,35 +53,40 @@ def test_trigger_recovery_blocked_policy():
         "amount": 2000.0,
         "failure_reason": "network_timeout",
         "failure_category": "transient",
-        "previous_failures_24h": 2,
-        "recovery_attempt_count": 2
+        "previous_failures_24h": 4,
+        "consecutive_failure_streak": 4,
+        "recovery_attempt_count": 4
     }
     response = client.post("/api/v1/recovery/trigger", json=payload)
     assert response.status_code == 200
     data = response.json()
     assert data["transaction_id"] == "txn_api_002"
-    assert data["policy_decision"] == "BLOCKED"
+    assert data["policy_decision"] == "REFUSE"
     assert data["action_status"] == "not_executed"
     assert len(data["policy_violations"]) > 0
 
 
 def test_trigger_recovery_human_approval():
-    """Verify POST /api/v1/recovery/trigger for amount > ₹25,000 returns 200 OK HUMAN_APPROVAL."""
+    """Verify POST /api/v1/recovery/trigger for amount > ₹8,500 threshold returns 200 OK ESCALATE."""
     payload = {
         "transaction_id": "txn_api_003",
         "customer_id": "cust_api_003",
         "merchant_id": "merch_01",
-        "amount": 50000.0,  # Exceeds ₹25,000 cap
-        "failure_reason": "insufficient_funds",
-        "failure_category": "customer_action_required"
+        "amount": 10000.0,  # Exceeds ₹8,500 threshold
+        "customer_average_transaction": 10000.0,
+        "failure_reason": "network_timeout",
+        "failure_category": "transient",
+        "customer_historical_success_rate": 0.95
     }
     response = client.post("/api/v1/recovery/trigger", json=payload)
     assert response.status_code == 200
     data = response.json()
     assert data["transaction_id"] == "txn_api_003"
-    assert data["policy_decision"] == "HUMAN_APPROVAL"
+    assert data["policy_decision"] == "ESCALATE"
     assert data["agent_status"] == "AWAITING_APPROVAL"
     assert data["action_status"] == "not_executed"
+
+
 
 
 def test_trigger_recovery_missing_required_fields():

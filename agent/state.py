@@ -31,8 +31,11 @@ class AgentState(TypedDict, total=False):
     customer_contacted_today: int
     previous_failures_24h: int
     previous_failures_7d: int
+    consecutive_failure_streak: int
+    customer_past_recovery_rate_pre_current: float
     ip_risk_score: float
     velocity_score: float
+
 
     # ML Output
     recovery_probability: float

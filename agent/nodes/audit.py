@@ -3,7 +3,7 @@ Node 8: Audit Log
 Constructs complete, immutable audit record of the agent's decision and execution trace.
 """
 
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Dict, Any
 from agent.state import AgentState
 
@@ -15,7 +15,7 @@ def create_audit_log(state: AgentState) -> AgentState:
     What did policy approve? What was executed? What was verified?
     """
     audit_record: Dict[str, Any] = {
-        "timestamp": datetime.utcnow().isoformat() + "Z",
+        "timestamp": datetime.now(timezone.utc).isoformat(),
         "transaction_id": state.get("transaction_id"),
         "customer_id": state.get("customer_id"),
         "merchant_id": state.get("merchant_id"),

@@ -18,9 +18,10 @@ def predict_recovery(state: AgentState) -> AgentState:
         input_dict.update(state["customer_context"])
 
     ml_input = {
-        key: input_dict[key]
+        key: input_dict.get(key, 0)
         for key in APPROVED_MODEL_FEATURES
     }
+
 
     res = predict_recovery_probability(ml_input)
     prob = float(res["recovery_probability"])

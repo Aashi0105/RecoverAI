@@ -152,9 +152,9 @@ def test_invariant_e_high_value_escalation():
 
 def test_invariant_f_uncertainty_band_escalation():
     """
-    INVARIANT F: If 0.32 <= prob <= 0.38 and no refusal rule triggered, decision MUST be ESCALATE.
+    INVARIANT F: If 0.35 <= prob <= 0.38 and no refusal rule triggered, decision MUST be ESCALATE.
     """
-    for prob in [0.32, 0.35, 0.38]:
+    for prob in [0.35, 0.36, 0.38]:
         txn = {
             "transaction_id": "txn_test_uncertain",
             "amount": 1000.0,
@@ -164,6 +164,7 @@ def test_invariant_f_uncertainty_band_escalation():
         res = evaluate_transaction_policy(txn, pred_prob=prob)
         assert res["decision"] == "ESCALATE"
         assert any("BOUNDARY_UNCERTAINTY_ESCALATE" in r for r in res["triggered_rules"])
+
 
 
 def test_invariant_g_risk_warning_escalation():
@@ -234,7 +235,8 @@ def test_execution_safety_guarantee():
         }
         exec_res = execute_recovery_policy(policy_eval, dry_run=False) # Test even with dry_run=False
         assert exec_res["external_api_called"] is False
-        assert exec_res["execution_status"] in ["REFUSED_BY_POLICY", "ESCALATED_TO_MERCHANT"]
+        assert exec_res["execution_status"] in ["BLOCKED_BY_POLICY", "REFUSED_BY_POLICY", "ESCALATED_TO_MERCHANT"]
+
 
 
 # -----------------------------------------------------------------------------

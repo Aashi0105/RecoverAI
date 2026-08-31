@@ -15,7 +15,7 @@ from backend.schemas.recovery import (
     ErrorResponse
 )
 from agent.graph import run_agent
-from agent.demo_data import build_test_transaction
+from agent.normalizer import normalize_transaction_payload
 from database.database import get_db
 from database.repository import save_recovery_audit, get_audit_by_transaction_id
 
@@ -42,9 +42,9 @@ async def trigger_recovery(
     db: Session = Depends(get_db)
 ):
     try:
-        # Construct complete transaction dict using factory to guarantee ML feature schema
+        # Normalize transaction dict to guarantee 31 approved ML features
         payload_dict = payload.model_dump(exclude_unset=True)
-        txn_dict = build_test_transaction(**payload_dict)
+        txn_dict = normalize_transaction_payload(**payload_dict)
 
         # Invoke LangGraph agent workflow
         result = run_agent(txn_dict)

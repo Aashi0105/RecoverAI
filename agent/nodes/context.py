@@ -45,8 +45,11 @@ def load_context(state: AgentState) -> AgentState:
         "ip_risk_score": state.get("ip_risk_score", 0.0),
         "velocity_score": state.get("velocity_score", 0.0),
         "device_changed": state.get("device_changed", 0),
-        "location_changed": state.get("location_changed", 0)
+        "location_changed": state.get("location_changed", 0),
+        "consecutive_failure_streak": state.get("consecutive_failure_streak", 0),
+        "customer_past_recovery_rate_pre_current": state.get("customer_past_recovery_rate_pre_current", 0.0)
     }
+
     
     state["amount"] = amount
     state["currency"] = currency

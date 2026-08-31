@@ -109,5 +109,4 @@ def execute_mock_action(state: AgentState) -> AgentState:
             }
 
     state["action_result"] = result
-    state["agent_status"] = "EXECUTED"
     return state

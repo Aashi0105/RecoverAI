@@ -191,10 +191,11 @@ def policy_guard(state: AgentState) -> AgentState:
         "amount": state.get("amount", 0.0),
         "failure_reason": state.get("failure_reason", "unknown"),
         "failure_category": state.get("failure_category", "unknown"),
-        "ip_risk_score": state.get("customer_context", {}).get("ip_risk_score", 0.0),
-        "velocity_score": state.get("customer_context", {}).get("velocity_score", 0.0),
-        "consecutive_failure_streak": state.get("customer_context", {}).get("consecutive_failure_streak", 0)
+        "ip_risk_score": state.get("customer_context", {}).get("ip_risk_score", state.get("ip_risk_score", 0.0)),
+        "velocity_score": state.get("customer_context", {}).get("velocity_score", state.get("velocity_score", 0.0)),
+        "consecutive_failure_streak": state.get("customer_context", {}).get("consecutive_failure_streak", state.get("consecutive_failure_streak", 0))
     }
+
 
     pred_prob = state.get("recovery_probability", 0.0)
     policy_eval = evaluate_transaction_policy(txn_data, pred_prob)
