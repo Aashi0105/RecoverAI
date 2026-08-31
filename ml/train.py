@@ -42,10 +42,12 @@ def train_and_evaluate_ml_pipeline(csv_path: str = "data/raw/transactions.csv", 
     # 1. Ensure dataset exists
     if not os.path.exists(csv_path):
         print(f"Dataset not found at {csv_path}. Generating synthetic dataset...")
-        df_raw = generate_pipeline(rows=20000, seed=seed)
+        out_dir = os.path.dirname(csv_path) if os.path.dirname(csv_path) else "data/raw"
+        df_raw = generate_pipeline(rows=20000, seed=seed, output_dir=out_dir)
     else:
         print(f"Loading raw dataset from: {csv_path}")
         df_raw = pd.read_csv(csv_path)
+
 
     # 2. Filter failed payments & extract audited features
     X, y = prepare_features_and_target(df_raw)

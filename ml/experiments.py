@@ -19,7 +19,8 @@ import time
 import joblib
 import numpy as np
 import pandas as pd
-from typing import Dict, Any, List
+from typing import Dict, Any, List, Optional
+
 
 from sklearn.model_selection import train_test_split, StratifiedKFold, RandomizedSearchCV
 from sklearn.pipeline import Pipeline
@@ -79,7 +80,11 @@ def run_cross_validation(X: pd.DataFrame, y: pd.Series, numeric_cols: List[str],
     }
 
 
-def run_all_experiments(csv_path: str = "data/raw/transactions.csv", seed: int = 42) -> Dict[str, Any]:
+def run_all_experiments(
+    csv_path: str = "data/raw/transactions.csv",
+    seed: int = 42,
+    exp_dir: Optional[str] = None
+) -> Dict[str, Any]:
     """
     Executes formal progressive ML experiment suite.
     """
@@ -90,10 +95,12 @@ def run_all_experiments(csv_path: str = "data/raw/transactions.csv", seed: int =
     # 1. Load data
     if not os.path.exists(csv_path):
         print(f"Dataset not found at {csv_path}. Generating synthetic dataset...")
-        df_raw = generate_pipeline(rows=20000, seed=seed)
+        out_dir = os.path.dirname(csv_path) if os.path.dirname(csv_path) else "data/raw"
+        df_raw = generate_pipeline(rows=20000, seed=seed, output_dir=out_dir)
     else:
         print(f"Loading raw dataset from: {csv_path}")
         df_raw = pd.read_csv(csv_path)
+
 
     # Filter failed payments
     failed_df = df_raw[df_raw["payment_status"] == "failed"].copy()
@@ -103,9 +110,15 @@ def run_all_experiments(csv_path: str = "data/raw/transactions.csv", seed: int =
     failed_df = add_engineered_features(failed_df)
     y_all = failed_df["recovered"].astype(int)
 
-    # Create experiments artifact directory
-    exp_dir = os.path.join("ml", "models", "experiments")
+    # Determine artifact output directories safely
+    if exp_dir is None:
+        exp_dir = os.path.join("ml", "models", "experiments")
+        eval_dir = "evaluation"
+    else:
+        eval_dir = exp_dir
+
     os.makedirs(exp_dir, exist_ok=True)
+    os.makedirs(eval_dir, exist_ok=True)
 
     # Stratified 85 / 15 Train-Development vs Untouched Test Split
     idx_dev, idx_test, y_dev, y_test = train_test_split(
@@ -150,7 +163,13 @@ def run_all_experiments(csv_path: str = "data/raw/transactions.csv", seed: int =
     prep0 = build_custom_preprocessor(exp0_num, exp0_cat)
     pipe0 = Pipeline([("preprocessor", prep0), ("classifier", clf0)])
 
+    t0_start = time.time()
     pipe0.fit(X0_dev, y0_dev)
+    t0_fit = time.time() - t0_start
+
+    val_probs0 = pipe0.predict_proba(X0_val)[:, 1]
+    m0 = compute_all_metrics(y0_val.values, val_probs0)
+
     joblib.dump(pipe0, os.path.join(exp_dir, "exp_0_baseline.joblib"))
     trained_pipelines["EXP_0"] = pipe0
 
@@ -168,6 +187,7 @@ def run_all_experiments(csv_path: str = "data/raw/transactions.csv", seed: int =
     }
     experiments_log.append(exp0_record)
     print(f"\n✅ EXP 0 Complete: Baseline Logistic Regression (CV ROC-AUC: {cv0['mean_roc_auc']} ± {cv0['std_roc_auc']})")
+
 
     # -------------------------------------------------------------------------
     # EXPERIMENT 1: FULL FEATURE BENCHMARK (Random Forest, 29 Raw Features)
@@ -444,8 +464,8 @@ def run_all_experiments(csv_path: str = "data/raw/transactions.csv", seed: int =
         "experiments": experiments_log
     }
 
-    history_path = os.path.join("evaluation", "experiment_history.json")
-    os.makedirs("evaluation", exist_ok=True)
+    history_path = os.path.join(eval_dir, "experiment_history.json")
+    os.makedirs(eval_dir, exist_ok=True)
     with open(history_path, "w") as f:
         json.dump(history_payload, f, indent=2)
     print(f"\n💾 Saved experiment history to: {history_path}")
@@ -511,10 +531,11 @@ def run_all_experiments(csv_path: str = "data/raw/transactions.csv", seed: int =
         "top_10_features": top_features
     }
 
-    final_comp_path = os.path.join("evaluation", "final_model_comparison.json")
+    final_comp_path = os.path.join(eval_dir, "final_model_comparison.json")
     with open(final_comp_path, "w") as f:
         json.dump(final_comparison_payload, f, indent=2)
     print(f"💾 Saved final model comparison to: {final_comp_path}")
+
 
     return history_payload
 

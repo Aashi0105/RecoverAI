@@ -4,22 +4,22 @@ import pandas as pd
 from data.generate_data import generate_pipeline, validate_dataset, PAYMENT_METHODS, FAILURE_MAPPING, RECOVERY_ACTIONS
 
 
-def test_generator_runs_and_row_count():
+def test_generator_runs_and_row_count(tmp_path):
     """1 & 2: Test dataset generates successfully and requested row count is respected."""
-    df = generate_pipeline(rows=500, seed=123, output_dir="data/raw")
+    df = generate_pipeline(rows=500, seed=123, output_dir=str(tmp_path))
     assert isinstance(df, pd.DataFrame)
     assert len(df) == 500
 
 
-def test_unique_transaction_ids():
+def test_unique_transaction_ids(tmp_path):
     """3: Test that transaction_id values are strictly unique."""
-    df = generate_pipeline(rows=300, seed=456, output_dir="data/raw")
+    df = generate_pipeline(rows=300, seed=456, output_dir=str(tmp_path))
     assert df["transaction_id"].nunique() == 300
 
 
-def test_required_columns_exist():
+def test_required_columns_exist(tmp_path):
     """4: Test that all required schema columns exist."""
-    df = generate_pipeline(rows=200, seed=789, output_dir="data/raw")
+    df = generate_pipeline(rows=200, seed=789, output_dir=str(tmp_path))
     expected_cols = [
         "transaction_id", "customer_id", "merchant_id", "amount", "currency",
         "payment_method", "payment_network", "payment_channel", "timestamp",
@@ -40,9 +40,9 @@ def test_required_columns_exist():
         assert col in df.columns, f"Missing required column: {col}"
 
 
-def test_valid_categorical_values():
+def test_valid_categorical_values(tmp_path):
     """5: Test that categorical columns only contain allowed valid values."""
-    df = generate_pipeline(rows=300, seed=101, output_dir="data/raw")
+    df = generate_pipeline(rows=300, seed=101, output_dir=str(tmp_path))
     
     assert set(df["payment_method"]).issubset(set(PAYMENT_METHODS))
     assert set(df["payment_status"]).issubset({"success", "failed"})
@@ -57,9 +57,9 @@ def test_valid_categorical_values():
     assert (succ_df["failure_category"] == "none").all()
 
 
-def test_target_values_validity():
+def test_target_values_validity(tmp_path):
     """6: Test target values validity (recovered, recovered_amount, bounds)."""
-    df = generate_pipeline(rows=400, seed=202, output_dir="data/raw")
+    df = generate_pipeline(rows=400, seed=202, output_dir=str(tmp_path))
     
     # recovered is strictly 0 or 1
     assert set(df["recovered"].unique()).issubset({0, 1})
@@ -73,9 +73,9 @@ def test_target_values_validity():
     assert (not_recovered["recovered_amount"] == 0.0).all()
 
 
-def test_no_target_leakage_in_features():
+def test_no_target_leakage_in_features(tmp_path):
     """7: Test that target columns are not leaking into pre-decision input features."""
-    df = generate_pipeline(rows=200, seed=303, output_dir="data/raw")
+    df = generate_pipeline(rows=200, seed=303, output_dir=str(tmp_path))
     
     # List of pure input features at transaction decision time
     input_features = [
@@ -94,7 +94,7 @@ def test_no_target_leakage_in_features():
         assert feat not in target_columns, f"Target leakage! {feat} found in target columns."
 
 
-def test_validation_function_passes():
+def test_validation_function_passes(tmp_path):
     """Test that validate_dataset returns True on generated dataset."""
-    df = generate_pipeline(rows=300, seed=404, output_dir="data/raw")
+    df = generate_pipeline(rows=300, seed=404, output_dir=str(tmp_path))
     assert validate_dataset(df) is True

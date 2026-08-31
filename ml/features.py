@@ -5,7 +5,8 @@ Defines approved feature schema, strict target-leakage audits, and scikit-learn
 ColumnTransformer pipelines.
 """
 
-from typing import List, Tuple
+from typing import List, Tuple, Any
+
 import pandas as pd
 import numpy as np
 from sklearn.compose import ColumnTransformer
@@ -52,6 +53,11 @@ CATEGORICAL_FEATURES = [
 ]
 
 APPROVED_MODEL_FEATURES = NUMERIC_FEATURES + CATEGORICAL_FEATURES
+
+# EXP_0 Baseline Model Feature Constants
+EXP0_NUMERIC_FEATURES = ["amount", "hour", "day_of_week"]
+EXP0_CATEGORICAL_FEATURES = ["payment_method", "failure_reason"]
+
 
 # High-Signal Feature Selection (Purging 15 uninformative noise features)
 HIGH_SIGNAL_NUMERIC_FEATURES = [
@@ -110,46 +116,60 @@ FAILURE_SEVERITY_MAP = {
 }
 
 
+def _get_series(df: pd.DataFrame, col: str, default_val: Any) -> pd.Series:
+    if col in df.columns:
+        return df[col].fillna(default_val)
+    return pd.Series(default_val, index=df.index)
+
+
 def add_engineered_features(df: pd.DataFrame) -> pd.DataFrame:
     """
     Safely adds non-leaking engineered features to dataframe prior to feature extraction.
     Zero leakage: All inputs are known prior to payment recovery decision.
     """
     df_out = df.copy()
+
     
     # 1. Log-transformed amount
-    df_out["amount_log"] = np.log1p(np.maximum(df_out.get("amount", 0.0).fillna(0.0).values, 0.0))
+    amount_s = _get_series(df_out, "amount", 0.0)
+    df_out["amount_log"] = np.log1p(np.maximum(amount_s.values, 0.0))
     
     # 2. Ratio of transaction amount to customer average transaction
-    avg_txn = np.maximum(df_out.get("customer_average_transaction", 1.0).fillna(1.0).values, 1.0)
-    df_out["amount_to_customer_average_ratio"] = df_out.get("amount", 0.0).values / avg_txn
+    avg_txn_s = _get_series(df_out, "customer_average_transaction", 1.0)
+    avg_txn = np.maximum(avg_txn_s.values, 1.0)
+    df_out["amount_to_customer_average_ratio"] = amount_s.values / avg_txn
 
     # 3. Failure frequency ratio in last 24h
-    txns_24h = np.maximum(df_out.get("transactions_24h", 1.0).fillna(1.0).values, 1.0)
-    df_out["failure_frequency_ratio"] = df_out.get("previous_failures_24h", 0.0).fillna(0.0).values / txns_24h
+    txns_24h_s = _get_series(df_out, "transactions_24h", 1.0)
+    txns_24h = np.maximum(txns_24h_s.values, 1.0)
+    fails_24h_s = _get_series(df_out, "previous_failures_24h", 0.0)
+    df_out["failure_frequency_ratio"] = fails_24h_s.values / txns_24h
 
     # 4. Risk-Velocity Product
-    ip_risk = df_out.get("ip_risk_score", 0.0).fillna(0.0).values
-    velocity = df_out.get("velocity_score", 0.0).fillna(0.0).values
+    ip_risk = _get_series(df_out, "ip_risk_score", 0.0).values
+    velocity = _get_series(df_out, "velocity_score", 0.0).values
     df_out["risk_velocity_product"] = ip_risk * velocity
 
     # 5. Success rate & velocity interaction term
-    succ_rate = df_out.get("customer_historical_success_rate", 0.5).fillna(0.5).values
+    succ_rate = _get_series(df_out, "customer_historical_success_rate", 0.5).values
     df_out["success_rate_velocity_interaction"] = succ_rate * velocity
 
     # 6. High risk flag
     df_out["high_risk_flag"] = ((ip_risk > 0.65) | (velocity > 0.65)).astype(float)
 
     # 7. Failure burst flag
-    fails_24h = df_out.get("previous_failures_24h", 0).fillna(0).values
-    fails_7d = df_out.get("previous_failures_7d", 0).fillna(0).values
-    df_out["failure_burst_flag"] = ((fails_24h >= 2) | (fails_7d >= 3)).astype(float)
+    fails_7d_s = _get_series(df_out, "previous_failures_7d", 0.0)
+    df_out["failure_burst_flag"] = ((fails_24h_s.values >= 2) | (fails_7d_s.values >= 3)).astype(float)
 
     # 8. Failure severity score
-    cats = df_out.get("failure_category", pd.Series(["none"] * len(df_out))).fillna("none").astype(str)
+    cats = _get_series(df_out, "failure_category", "none").astype(str)
     df_out["failure_severity_score"] = cats.map(lambda c: FAILURE_SEVERITY_MAP.get(c, 3.0)).values
 
     return df_out
+
+
+engineer_features = add_engineered_features
+
 
 
 def audit_features(feature_list: List[str]) -> None:

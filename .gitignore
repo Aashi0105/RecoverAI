@@ -49,6 +49,7 @@ ml/models/*.joblib
 ml/models/*.bin
 ml/models/*.onnx
 !ml/models/experiments/exp_0_baseline.joblib
+!ml/models/recovery_model.joblib
 !ml/models/.gitkeep
 data/raw/*
 !data/raw/transactions.csv
@@ -93,7 +94,7 @@ regenerate_*.py
 run_*.py
 scratch_*.py
 search_*.py
-test_*.py
+/test_*.py
 trace_*.py
 update_*.py
 verify_*.py

@@ -103,7 +103,8 @@ def test_5_preprocessor_isolation_fitted_on_train_only():
 def test_6_experiment_runner_and_json_structure(tmp_path):
     """Test 6: Verify run_all_experiments writes valid JSON and valid 5-Fold CV metrics."""
     csv_path = os.path.join(tmp_path, "test_txns.csv")
-    history = run_all_experiments(csv_path=csv_path, seed=42)
+    exp_dir = os.path.join(tmp_path, "models")
+    history = run_all_experiments(csv_path=csv_path, seed=42, exp_dir=exp_dir)
 
     assert "dataset" in history
     assert "split" in history
@@ -118,6 +119,9 @@ def test_6_experiment_runner_and_json_structure(tmp_path):
         assert "cross_validation" in exp
         cv = exp["cross_validation"]
         assert 0.0 <= cv["mean_roc_auc"] <= 1.0
+
+    assert os.path.exists(os.path.join(exp_dir, "exp_0_baseline.joblib"))
+
 
 
 def test_existing_production_inference_remains_functional():
@@ -138,7 +142,10 @@ def test_existing_production_inference_remains_functional():
         "customer_lifetime_value": 15000.0,
         "customer_average_transaction": 1100.0,
         "customer_transaction_frequency_30d": 3.0,
+        "consecutive_failure_streak": 0,
+        "customer_past_recovery_rate_pre_current": 0.0,
         "previous_failures_24h": 0,
+
         "previous_failures_7d": 0,
         "previous_successes_30d": 3,
         "transactions_24h": 1,
