@@ -238,9 +238,9 @@ pytest tests/ -v
 | **Backend REST API** | **FastAPI & Pydantic** | Production REST routing (`/trigger`) and schema validation |
 | **Database & ORM** | **PostgreSQL (Neon Cloud)** | Primary runtime database with SQLAlchemy 2.0 ORM models |
 | **Database Fallbacks**| **SQLite (File & Memory)** | Development DB (`recover_ai.db`) and in-memory test DB (`sqlite:///:memory:`) |
-| **Payment Integration**| **Razorpay SDK** | Test Mode Payment Link API creation (`razorpay-python`) |
-| **Audit Telemetry** | **Append-Only JSONL** | Immutable telemetry trails (`decision_audit.jsonl` & `drift_audit.jsonl`) |
-| **Testing & QA** | **Pytest & unittest.mock** | 38 automated regression tests, thread barriers, and API mocking |
+| **Payment Integration**| **Razorpay SDK & Webhooks** | Test Mode Payment Link API creation & HMAC-SHA256 closed-loop webhook handling |
+| **Audit Telemetry** | **Append-Only JSONL & SQL** | Immutable telemetry trails (`decision_audit.jsonl`, `drift_audit.jsonl`, & `AuditLog`) |
+| **Testing & QA** | **Pytest & unittest.mock** | 110 automated regression tests, webhook simulations, thread barriers, and schema contracts |
 | **Configuration** | **PyYAML & Dotenv** | Declarative policy configuration (`recovery_policy.yaml`) and `.env` loading |
 | **Benchmark Tooling**| **XGBoost (Optional)** | Installed in `requirements.txt` for offline model comparison benchmarks |
 
@@ -287,12 +287,70 @@ uvicorn backend.main:app --reload --port 8000
 
 ---
 
+## 🔄 Closed-Loop Webhook Recovery Architecture
+
+RecoverAI implements a true **closed-loop recovery lifecycle**. Generating a payment link only initiates an intervention; the loop is closed asynchronously when Razorpay confirms the customer's actual payment.
+
+```text
+┌─────────────────────────┐
+│     Failed Payment      │
+└────────────┬────────────┘
+             │
+             ▼
+┌─────────────────────────┐
+│ LangGraph Agent Policy  │──[REFUSE/ESCALATE]──► Zero External Calls
+└────────────┬────────────┘
+             │ [ACT]
+             ▼
+┌─────────────────────────┐
+│ Razorpay Link Created   │──► Claim Status: SUCCEEDED (Open Loop)
+└────────────┬────────────┘
+             │
+             ▼ (Customer pays / fails / link expires asynchronously)
+┌─────────────────────────┐
+│ POST /api/v1/webhooks/  │
+│        razorpay         │
+└────────────┬────────────┘
+             │
+             ├─► 1. Raw Body Cryptographic Verification (HMAC-SHA256)
+             ├─► 2. Event Normalization (payment_link_id, payment_id, reference_id)
+             ├─► 3. Deterministic Claim Correlation (Primary: link ID, Fallback: ref ID)
+             ├─► 4. Database Idempotency Check (prevents double financial credit)
+             ▼
+┌─────────────────────────┐
+│ Closed-Loop Settlement  │
+└────────────┬────────────┘
+             ├─► payment_link.paid    ──► Claim: PAID | Payment: RECOVERED | Action: SETTLED
+             ├─► payment.failed       ──► Claim: PAYMENT_FAILED | Payment: FAILED (Never RECOVERED)
+             ├─► payment_link.expired ──► Claim: EXPIRED | Payment: FAILED (Never RECOVERED)
+             ▼
+┌─────────────────────────┐
+│   Immutable Audit Log   │──► AuditLog (event_type=WEBHOOK_OUTCOME, actor=RAZORPAY_WEBHOOK)
+└─────────────────────────┘
+```
+
+### Webhook Configuration & Testing
+
+1. **Environment Secret**:
+   Set `RAZORPAY_WEBHOOK_SECRET` in your `.env` file (see `.env.example`).
+2. **Supported Events**:
+   - `payment_link.paid`
+   - `payment.failed`
+   - `payment_link.expired`
+3. **Automated Webhook Simulation Tests**:
+   Run the dedicated webhook test suite verifying signature verification, state transitions, idempotency, and fallback correlation:
+   ```bash
+   python -m pytest tests/test_webhooks.py -v
+   ```
+
+---
+
 ## 🔍 Verification Scripts
 
 All verification scripts run from the repository root:
 
 ```bash
-# 1. Run Complete 38-Test Pytest Suite
+# 1. Run Complete 110-Test Pytest Suite
 pytest tests/ -v
 
 # 2. Verify Streamlit Top Metrics Alignment & Ground-Truth Calculations

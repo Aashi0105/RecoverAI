@@ -224,3 +224,241 @@ def mark_execution_unknown(
         db.refresh(claim)
     return claim
 
+
+def get_execution_claim_by_link_id(
+    db: Session,
+    payment_link_id: str
+) -> Optional[PaymentExecutionClaim]:
+    """Retrieves an execution claim by Razorpay payment_link_id (Primary correlation)."""
+    if not payment_link_id:
+        return None
+    return (
+        db.query(PaymentExecutionClaim)
+        .filter(PaymentExecutionClaim.payment_link_id == payment_link_id)
+        .first()
+    )
+
+
+def get_execution_claim_by_payment_id(
+    db: Session,
+    payment_id: str
+) -> Optional[PaymentExecutionClaim]:
+    """Retrieves an execution claim by internal transaction/payment_id (Fallback correlation)."""
+    if not payment_id:
+        return None
+    return (
+        db.query(PaymentExecutionClaim)
+        .filter(PaymentExecutionClaim.payment_id == payment_id)
+        .first()
+    )
+
+
+def process_webhook_lifecycle_event(
+    db: Session,
+    event: Any
+) -> Dict[str, Any]:
+    """
+    Correlates an incoming normalized Razorpay webhook event with internal records,
+    checks idempotency, executes atomic state transitions across claims, payments,
+    and actions, and creates an audit log entry.
+    """
+    event_type = getattr(event, "event_type", None)
+    payment_link_id = getattr(event, "payment_link_id", None)
+    reference_id = getattr(event, "reference_id", None)
+    payment_id = getattr(event, "payment_id", None)
+    amount = getattr(event, "amount", None)
+
+    # 1. Check if event is supported by revenue recovery system
+    if event_type not in ["payment_link.paid", "payment.failed", "payment_link.expired"]:
+        return {
+            "status": "ignored",
+            "event_type": event_type,
+            "message": f"Event '{event_type}' is unhandled by recovery webhook service and safely acknowledged."
+        }
+
+    # 2. Correlate with internal execution claim
+    claim = None
+    if payment_link_id:
+        claim = get_execution_claim_by_link_id(db, payment_link_id)
+    if not claim and reference_id:
+        claim = get_execution_claim_by_payment_id(db, reference_id)
+
+    if not claim:
+        return {
+            "status": "unmatched",
+            "message": f"No claim found for payment_link_id='{payment_link_id}' or reference_id='{reference_id}'",
+            "event_type": event_type
+        }
+
+    txn_id = claim.payment_id
+    failed_payment = db.query(FailedPayment).filter(FailedPayment.id == txn_id).first()
+    recovery_action = db.query(RecoveryAction).filter(RecoveryAction.payment_id == txn_id).first()
+    now = datetime.now(timezone.utc)
+
+    try:
+        if event_type == "payment_link.paid":
+            # Idempotency guard
+            if claim.status == "PAID":
+                return {
+                    "status": "already_processed",
+                    "transaction_id": txn_id,
+                    "claim_status": claim.status,
+                    "message": f"Payment execution claim for '{txn_id}' is already marked PAID."
+                }
+
+            claim.status = "PAID"
+            claim.updated_at = now
+            details = claim.result_details or {}
+            if isinstance(details, str):
+                try:
+                    details = json.loads(details)
+                except Exception:
+                    details = {"raw": details}
+            details["webhook_payment_id"] = payment_id
+            details["amount_recovered"] = amount or claim.amount
+            details["settled_at"] = now.isoformat()
+            claim.result_details = details
+
+            if failed_payment:
+                failed_payment.status = "RECOVERED"
+
+            if recovery_action:
+                recovery_action.result_status = "SETTLED"
+                act_details = recovery_action.result_details or {}
+                if isinstance(act_details, str):
+                    try:
+                        act_details = json.loads(act_details)
+                    except Exception:
+                        act_details = {"raw": act_details}
+                act_details["webhook_confirmed"] = True
+                act_details["payment_id"] = payment_id
+                act_details["amount_recovered"] = amount or claim.amount
+                recovery_action.result_details = act_details
+
+            audit_log = AuditLog(
+                payment_id=txn_id,
+                event_type="WEBHOOK_OUTCOME",
+                actor="RAZORPAY_WEBHOOK",
+                details={
+                    "webhook_event": event_type,
+                    "payment_link_id": payment_link_id,
+                    "payment_id": payment_id,
+                    "amount_recovered": amount or claim.amount,
+                    "resulting_claim_status": "PAID",
+                    "resulting_payment_status": "RECOVERED",
+                    "resulting_action_status": "SETTLED"
+                },
+                timestamp=now
+            )
+            db.add(audit_log)
+            db.commit()
+
+            return {
+                "status": "success",
+                "action": "payment_confirmed",
+                "transaction_id": txn_id,
+                "claim_status": "PAID",
+                "amount_recovered": amount or claim.amount
+            }
+
+        elif event_type == "payment.failed":
+            if claim.status == "PAID":
+                return {
+                    "status": "already_processed",
+                    "transaction_id": txn_id,
+                    "claim_status": claim.status,
+                    "message": f"Payment '{txn_id}' was already settled as PAID; ignoring late payment failure."
+                }
+            if claim.status == "PAYMENT_FAILED":
+                return {
+                    "status": "already_processed",
+                    "transaction_id": txn_id,
+                    "claim_status": claim.status,
+                    "message": f"Payment execution claim for '{txn_id}' is already marked PAYMENT_FAILED."
+                }
+
+            claim.status = "PAYMENT_FAILED"
+            claim.updated_at = now
+            if failed_payment:
+                failed_payment.status = "FAILED"
+            if recovery_action:
+                recovery_action.result_status = "FAILED"
+
+            audit_log = AuditLog(
+                payment_id=txn_id,
+                event_type="WEBHOOK_OUTCOME",
+                actor="RAZORPAY_WEBHOOK",
+                details={
+                    "webhook_event": event_type,
+                    "payment_link_id": payment_link_id,
+                    "payment_id": payment_id,
+                    "error_code": getattr(event, "error_code", None),
+                    "error_description": getattr(event, "error_description", None),
+                    "resulting_claim_status": "PAYMENT_FAILED"
+                },
+                timestamp=now
+            )
+            db.add(audit_log)
+            db.commit()
+
+            return {
+                "status": "success",
+                "action": "payment_failed_recorded",
+                "transaction_id": txn_id,
+                "claim_status": "PAYMENT_FAILED"
+            }
+
+        elif event_type == "payment_link.expired":
+            if claim.status == "PAID":
+                return {
+                    "status": "already_processed",
+                    "transaction_id": txn_id,
+                    "claim_status": claim.status,
+                    "message": f"Payment '{txn_id}' was already settled as PAID; ignoring link expiration."
+                }
+            if claim.status == "EXPIRED":
+                return {
+                    "status": "already_processed",
+                    "transaction_id": txn_id,
+                    "claim_status": claim.status,
+                    "message": f"Payment execution claim for '{txn_id}' is already marked EXPIRED."
+                }
+
+            claim.status = "EXPIRED"
+            claim.updated_at = now
+            if recovery_action:
+                recovery_action.result_status = "EXPIRED"
+
+            audit_log = AuditLog(
+                payment_id=txn_id,
+                event_type="WEBHOOK_OUTCOME",
+                actor="RAZORPAY_WEBHOOK",
+                details={
+                    "webhook_event": event_type,
+                    "payment_link_id": payment_link_id,
+                    "resulting_claim_status": "EXPIRED"
+                },
+                timestamp=now
+            )
+            db.add(audit_log)
+            db.commit()
+
+            return {
+                "status": "success",
+                "action": "payment_link_expired",
+                "transaction_id": txn_id,
+                "claim_status": "EXPIRED"
+            }
+
+        else:
+            return {
+                "status": "ignored",
+                "event_type": event_type,
+                "message": f"Event '{event_type}' is unhandled and ignored."
+            }
+
+    except Exception as e:
+        db.rollback()
+        raise RuntimeError(f"Database error during webhook event processing: {str(e)}") from e
+
+

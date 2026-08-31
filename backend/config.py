@@ -11,6 +11,7 @@ class Settings(BaseSettings):
     # Razorpay Test Mode Credentials & Toggle
     RAZORPAY_KEY_ID: str = ""
     RAZORPAY_KEY_SECRET: str = ""
+    RAZORPAY_WEBHOOK_SECRET: str = ""
     RAZORPAY_ENABLED: bool = False
     
     # LLM Settings

@@ -132,14 +132,14 @@ def execute_recovery_policy(
 
             if not created and claim:
                 status = claim.status
-                if status == "SUCCEEDED":
+                if status in ["SUCCEEDED", "PAID"]:
                     audit_record["execution_status"] = "IDEMPOTENT_SKIPPED"
                     audit_record["external_api_called"] = False
                     audit_record["razorpay_reference_id"] = claim.payment_link_id
                     audit_record["short_url"] = claim.short_url
                     audit_record["justification"] = (
                         f"IDEMPOTENT REUSE: Payment recovery link for transaction '{txn_id}' "
-                        f"already created successfully ({claim.payment_link_id}). External API call bypassed."
+                        f"already created/settled ({claim.payment_link_id}, status={status}). External API call bypassed."
                     )
                     return audit_record
 
