@@ -7,7 +7,7 @@ recovery actions, and immutable audit logs in PostgreSQL / SQLite.
 
 import uuid
 import json
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Dict, Any, Optional, List, Tuple
 from sqlalchemy.orm import Session
 from database.models import FailedPayment, RecoveryAction, AuditLog, PaymentExecutionClaim
@@ -53,7 +53,7 @@ def save_recovery_audit(db: Session, agent_result: Dict[str, Any]) -> AuditLog:
                 action_type=selected_action,
                 policy_checked=True,
                 approved_by_human=(agent_result.get("policy_decision") == "HUMAN_APPROVAL"),
-                executed_at=datetime.utcnow(),
+                executed_at=datetime.now(timezone.utc),
                 result_status=str(agent_result.get("action_status", "INITIATED")).upper(),
                 result_details={
                     "reference_id": agent_result.get("action_reference"),
@@ -69,7 +69,7 @@ def save_recovery_audit(db: Session, agent_result: Dict[str, Any]) -> AuditLog:
             event_type="RECOVERY_WORKFLOW",
             actor="LANGGRAPH_AGENT",
             details=audit_event,
-            timestamp=datetime.utcnow()
+            timestamp=datetime.now(timezone.utc)
         )
         db.add(audit_log)
 
@@ -155,8 +155,8 @@ def create_execution_claim(
         action_type=action_type,
         amount=amount,
         status="PROCESSING",
-        created_at=datetime.utcnow(),
-        updated_at=datetime.utcnow()
+        created_at=datetime.now(timezone.utc),
+        updated_at=datetime.now(timezone.utc)
     )
     try:
         db.add(claim)
@@ -169,7 +169,11 @@ def create_execution_claim(
         return False, existing
     except Exception as e:
         db.rollback()
+        existing = get_execution_claim(db, idempotency_key)
+        if existing:
+            return False, existing
         raise RuntimeError(f"Database error creating execution claim: {str(e)}") from e
+
 
 
 def mark_execution_succeeded(
@@ -185,7 +189,7 @@ def mark_execution_succeeded(
         claim.payment_link_id = payment_link_id
         claim.short_url = short_url
         claim.result_details = result_details
-        claim.updated_at = datetime.utcnow()
+        claim.updated_at = datetime.now(timezone.utc)
         db.commit()
         db.refresh(claim)
     return claim
@@ -200,7 +204,7 @@ def mark_execution_failed_safe(
     if claim:
         claim.status = "FAILED_SAFE"
         claim.result_details = {"blocking_reason": reason}
-        claim.updated_at = datetime.utcnow()
+        claim.updated_at = datetime.now(timezone.utc)
         db.commit()
         db.refresh(claim)
     return claim
@@ -215,7 +219,7 @@ def mark_execution_unknown(
     if claim:
         claim.status = "UNKNOWN_EXTERNAL_RESULT"
         claim.result_details = {"error_message": error_message}
-        claim.updated_at = datetime.utcnow()
+        claim.updated_at = datetime.now(timezone.utc)
         db.commit()
         db.refresh(claim)
     return claim

@@ -1,6 +1,11 @@
-from datetime import datetime
+from datetime import datetime, timezone
 from sqlalchemy import Column, String, Float, DateTime, Integer, Boolean, Text, JSON
 from database.database import Base
+
+
+def get_utc_now():
+    """Returns current timezone-aware UTC datetime."""
+    return datetime.now(timezone.utc)
 
 
 class FailedPayment(Base):
@@ -15,7 +20,7 @@ class FailedPayment(Base):
     currency = Column(String(10), default="INR")
     failure_code = Column(String(50), nullable=False)
     failure_reason = Column(String(255), nullable=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=get_utc_now)
     
     # ML Score fields
     recovery_probability = Column(Float, nullable=True)
@@ -45,7 +50,7 @@ class AuditLog(Base):
     event_type = Column(String(50), nullable=False)  # DIAGNOSIS, ML_SCORE, POLICY_CHECK, ACTION_TAKEN, VERIFICATION
     actor = Column(String(50), default="LANGGRAPH_AGENT")  # LANGGRAPH_AGENT, MERCHANT_HUMAN, SYSTEM
     details = Column(JSON, nullable=True)
-    timestamp = Column(DateTime, default=datetime.utcnow)
+    timestamp = Column(DateTime, default=get_utc_now)
 
 
 class PaymentExecutionClaim(Base):
@@ -60,8 +65,8 @@ class PaymentExecutionClaim(Base):
     status = Column(String(30), nullable=False, default="PROCESSING")  # PROCESSING, SUCCEEDED, FAILED_SAFE, UNKNOWN_EXTERNAL_RESULT
     action_type = Column(String(50), nullable=True)
     amount = Column(Float, nullable=False, default=0.0)
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = Column(DateTime, default=get_utc_now)
+    updated_at = Column(DateTime, default=get_utc_now, onupdate=get_utc_now)
 
     # Execution result payload
     payment_link_id = Column(String(100), nullable=True)

@@ -11,6 +11,7 @@ import threading
 from unittest.mock import patch, MagicMock
 import pytest
 from sqlalchemy import create_engine
+from sqlalchemy.pool import StaticPool
 from sqlalchemy.orm import sessionmaker
 
 PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
@@ -33,13 +34,19 @@ def setup_test_db(monkeypatch):
     """
     Creates an isolated SQLite test database engine for every test run.
     """
-    test_engine = create_engine("sqlite:///:memory:", connect_args={"check_same_thread": False})
+    test_engine = create_engine(
+        "sqlite:///:memory:",
+        connect_args={"check_same_thread": False},
+        poolclass=StaticPool
+    )
     TestSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=test_engine)
     Base.metadata.create_all(bind=test_engine)
 
     monkeypatch.setattr("payment.executor.engine", test_engine)
     monkeypatch.setattr("payment.executor.SessionLocal", TestSessionLocal)
-    monkeypatch.setattr("database.repository.SessionLocal", TestSessionLocal)
+    monkeypatch.setattr("database.database.engine", test_engine)
+    monkeypatch.setattr("database.database.SessionLocal", TestSessionLocal)
+
     yield TestSessionLocal
 
 
@@ -154,12 +161,12 @@ def test_existing_succeeded_record_never_calls_external_api_again(setup_test_db)
     Verifies that an existing SUCCEEDED record in the database blocks future external API calls.
     """
     db = setup_test_db()
-    create_execution_claim(db, "idemp_succ_001", "txn_succ_001", "payment_link", 5000.0)
-    mark_execution_succeeded(db, "idemp_succ_001", payment_link_id="plink_existing", short_url="https://rzp.io/i/exist")
+    create_execution_claim(db, "idemp_txn_succ_001", "txn_succ_001", "payment_link", 5000.0)
+    mark_execution_succeeded(db, "idemp_txn_succ_001", payment_link_id="plink_existing", short_url="https://rzp.io/i/exist")
     db.close()
 
     policy_eval = {"transaction_id": "txn_succ_001", "amount": 5000.0, "recovery_probability": 0.85, "decision": "ACT", "recommended_action": "payment_link"}
-    mock_razorpay = MagicMock()
+    mock_razorpay = MagicMock(return_value={"success": True, "payment_link_id": "plink_existing", "short_url": "https://rzp.io/i/exist"})
 
     with patch("payment.executor.is_razorpay_configured", return_value=True), \
          patch("payment.executor.create_razorpay_test_payment_link", mock_razorpay):
@@ -175,11 +182,11 @@ def test_processing_record_blocks_duplicate_external_execution(setup_test_db):
     Verifies that an existing PROCESSING claim in the database blocks concurrent/re-try execution.
     """
     db = setup_test_db()
-    create_execution_claim(db, "idemp_proc_001", "txn_proc_001", "payment_link", 3000.0)
+    create_execution_claim(db, "idemp_txn_proc_001", "txn_proc_001", "payment_link", 3000.0)
     db.close()
 
     policy_eval = {"transaction_id": "txn_proc_001", "amount": 3000.0, "recovery_probability": 0.85, "decision": "ACT", "recommended_action": "payment_link"}
-    mock_razorpay = MagicMock()
+    mock_razorpay = MagicMock(return_value={"success": True, "payment_link_id": "plink_proc", "short_url": "https://rzp.io/i/proc"})
 
     with patch("payment.executor.is_razorpay_configured", return_value=True), \
          patch("payment.executor.create_razorpay_test_payment_link", mock_razorpay):
@@ -195,12 +202,12 @@ def test_unknown_external_result_blocks_automatic_retry(setup_test_db):
     Verifies that a transaction in UNKNOWN_EXTERNAL_RESULT state prohibits automatic re-execution.
     """
     db = setup_test_db()
-    create_execution_claim(db, "idemp_unk_001", "txn_unk_001", "payment_link", 4000.0)
-    mark_execution_unknown(db, "idemp_unk_001", "Simulated timeout during API call")
+    create_execution_claim(db, "idemp_txn_unk_001", "txn_unk_001", "payment_link", 4000.0)
+    mark_execution_unknown(db, "idemp_txn_unk_001", "Simulated timeout during API call")
     db.close()
 
     policy_eval = {"transaction_id": "txn_unk_001", "amount": 4000.0, "recovery_probability": 0.85, "decision": "ACT", "recommended_action": "payment_link"}
-    mock_razorpay = MagicMock()
+    mock_razorpay = MagicMock(return_value={"success": True, "payment_link_id": "plink_unk", "short_url": "https://rzp.io/i/unk"})
 
     with patch("payment.executor.is_razorpay_configured", return_value=True), \
          patch("payment.executor.create_razorpay_test_payment_link", mock_razorpay):
@@ -209,6 +216,8 @@ def test_unknown_external_result_blocks_automatic_retry(setup_test_db):
         assert res["execution_status"] == "UNKNOWN_EXTERNAL_RESULT"
         assert res["external_api_called"] is False
         assert mock_razorpay.call_count == 0
+
+
 
 
 def test_safe_local_failure_is_recorded_correctly(setup_test_db):
