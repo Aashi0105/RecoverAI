@@ -22,7 +22,7 @@ PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 if PROJECT_ROOT not in sys.path:
     sys.path.insert(0, PROJECT_ROOT)
 
-from ml.features import add_engineered_features
+from ml.features import add_engineered_features, EXP0_NUMERIC_FEATURES, EXP0_CATEGORICAL_FEATURES
 from agent.orchestrator import load_orchestrator_model
 from evaluation.business_metrics import evaluate_threshold_grid, ACTION_COSTS
 
@@ -44,8 +44,10 @@ def run_sensitivity_analysis() -> pd.DataFrame:
     test_df = failed_df.loc[idx_test].copy()
 
     pipeline = load_orchestrator_model()
-    exp0_features = ["amount", "hour", "day_of_week", "payment_method", "failure_reason"]
+    exp0_features = EXP0_NUMERIC_FEATURES + EXP0_CATEGORICAL_FEATURES
     base_probs = pipeline.predict_proba(test_df[exp0_features])[:, 1]
+
+
 
     expected_total_risk = float(np.sum(test_df["amount"]))
 
@@ -131,8 +133,9 @@ def run_sensitivity_analysis() -> pd.DataFrame:
             "EV Gross Revenue": f"₹{opt_gross:,.2f}",
             "EV Action Costs": f"₹{opt_cost:,.2f}",
             "EV Net Value": f"₹{opt_net:,.2f}",
-            "Gross Uplift": f"₹{gross_uplift:+,.2f}",
-            "True Net Uplift (₹)": f"₹{true_net_uplift:+,.2f}",
+            "Gross Uplift": f"{'+' if gross_uplift >= 0 else '-'}\u20b9{abs(gross_uplift):,.2f}",
+            "True Net Uplift (\u20b9)": f"{'+' if true_net_uplift >= 0 else '-'}\u20b9{abs(true_net_uplift):,.2f}",
+
             "True Net Uplift (%)": f"{true_pct_uplift:+.2f}%",
             "Positive True Net Uplift?": is_positive,
             "_raw_true_net_uplift": true_net_uplift,

@@ -7,6 +7,8 @@ followed by frozen single-pass evaluation on the untouched test set.
 
 import json
 import os
+import joblib
+
 from typing import Dict, Any, List, Tuple
 import numpy as np
 import pandas as pd
@@ -88,8 +90,16 @@ def evaluate_threshold_grid(
     Evaluates Expected Value (EV) and operational metrics across candidate probability thresholds
     using out-of-fold predictions on development data.
     """
+    if isinstance(oof_probs, pd.Series):
+        if not oof_probs.index.equals(df_dev.index):
+            if set(df_dev.index).issubset(set(oof_probs.index)):
+                oof_probs = oof_probs.loc[df_dev.index]
+            else:
+                raise ValueError("oof_probs Series index does not contain all required df_dev indices")
+
     if thresholds is None:
         thresholds = [round(t, 2) for t in np.arange(0.10, 0.95, 0.05)]
+
 
     y_true = df_dev["recovered"].astype(int).values
     amounts = df_dev["amount"].values
@@ -148,6 +158,47 @@ def evaluate_threshold_grid(
         })
 
     return pd.DataFrame(records)
+
+
+def evaluate_zero_intervention_baseline(df: pd.DataFrame) -> Dict[str, Any]:
+    """
+    Computes structured zero-intervention operational baseline metrics for business evaluation.
+
+    Operational Baseline Contract:
+    - Zero automated interventions (0 payments selected, 0.00% intervention rate).
+    - Automated action cost = ₹0.00.
+    - Incremental recovered revenue & net value attributable to automated intervention = ₹0.00.
+    - Observed natural recovery in test dataset is preserved separately for observational transparency.
+    """
+    total_samples = len(df)
+    total_risk = float(np.sum(df["amount"])) if "amount" in df.columns else 0.0
+
+    has_attempt = "recovery_attempted" in df.columns
+    has_rec = "recovered" in df.columns
+
+    if has_attempt and has_rec:
+        nat_mask = (df["recovery_attempted"] == 0) & (df["recovered"] == 1)
+        nat_count = int(np.sum(nat_mask))
+        nat_rev = float(np.sum(df.loc[nat_mask, "amount"])) if "amount" in df.columns else 0.0
+    else:
+        nat_count = 0
+        nat_rev = 0.0
+
+    return {
+        "strategy": "No automated intervention",
+        "payments_selected": 0,
+        "intervention_rate_pct": 0.0,
+        "expected_gross_recovery_value": 0.0,
+        "action_costs_incurred": 0.0,
+        "expected_net_value": 0.0,
+        "realized_recovered_revenue": 0.0,
+        "realized_net_value": 0.0,
+        "natural_observed_recovered_count": nat_count,
+        "natural_observed_recovered_revenue": round(nat_rev, 2),
+        "total_revenue_at_risk": round(total_risk, 2),
+        "interpretation": "Operational baseline representing zero automated interventions and zero action costs."
+    }
+
 
 
 def run_business_optimization(
@@ -237,12 +288,17 @@ def run_business_optimization(
     X_test_all = failed_df.loc[idx_test, exp0_features]
     y_test_all = failed_df.loc[idx_test, "recovered"].astype(int)
 
-    # Train frozen EXP_0 pipeline on full Dev set
-    pipe_frozen = Pipeline([
-        ("preprocessor", build_custom_preprocessor(exp0_num, exp0_cat)),
-        ("classifier", LogisticRegression(max_iter=1000, C=1.0, random_state=seed))
-    ])
-    pipe_frozen.fit(X_dev_all, y_dev_all)
+    # Load frozen EXP_0 pipeline artifact if available, otherwise fit on full Dev set
+    model_path = os.path.join("ml", "models", "experiments", "exp_0_baseline.joblib")
+    if os.path.exists(model_path):
+        pipe_frozen = joblib.load(model_path)
+    else:
+        pipe_frozen = Pipeline([
+            ("preprocessor", build_custom_preprocessor(exp0_num, exp0_cat)),
+            ("classifier", LogisticRegression(max_iter=1000, C=1.0, random_state=seed))
+        ])
+        pipe_frozen.fit(X_dev_all, y_dev_all)
+
 
     test_probs = pipe_frozen.predict_proba(X_test_all)[:, 1]
     test_probs_series = pd.Series(test_probs, index=idx_test)
@@ -288,6 +344,84 @@ def run_business_optimization(
     print(f"💾 Full optimization results saved to: {results_path}")
 
     return results_payload
+
+
+def calculate_business_impact(
+    amounts: np.ndarray,
+    y_true: np.ndarray,
+    probabilities: np.ndarray,
+    default_threshold: float = 0.50
+) -> Dict[str, Any]:
+    """
+    Compatibility function for offline training evaluation in ml/train.py.
+    Calculates business financial impact metrics.
+    """
+    amounts_arr = np.asarray(amounts, dtype=float)
+    y_arr = np.asarray(y_true, dtype=int)
+    probs_arr = np.asarray(probabilities, dtype=float)
+
+    total_count = len(amounts_arr)
+    total_val = float(np.sum(amounts_arr))
+    actual_recovered = float(np.sum(amounts_arr[y_arr == 1]))
+
+    selected_mask = probs_arr >= default_threshold
+    pred_recoverable = float(np.sum(amounts_arr[selected_mask]))
+    expected_recovery = float(np.sum(probs_arr * amounts_arr))
+
+    actual_selected_recovered = float(np.sum(amounts_arr[selected_mask & (y_arr == 1)]))
+    rec_recall = (actual_selected_recovered / actual_recovered) if actual_recovered > 0 else 0.0
+    rec_precision = (actual_selected_recovered / pred_recoverable) if pred_recoverable > 0 else 0.0
+
+    return {
+        "total_failed_count": total_count,
+        "total_failed_value": total_val,
+        "actual_recovered_revenue": actual_recovered,
+        "predicted_recoverable_revenue": pred_recoverable,
+        "expected_recovery_value": expected_recovery,
+        "revenue_capture_recall": rec_recall,
+        "revenue_precision": rec_precision
+    }
+
+
+def evaluate_decision_thresholds(
+    amounts: np.ndarray,
+    y_true: np.ndarray,
+    probabilities: np.ndarray,
+    thresholds: List[float] = None
+) -> List[Dict[str, Any]]:
+    """
+    Compatibility function for threshold trade-off table in ml/train.py.
+    """
+    if thresholds is None:
+        thresholds = [round(t, 2) for t in np.arange(0.10, 0.95, 0.05)]
+
+    amounts_arr = np.asarray(amounts, dtype=float)
+    y_arr = np.asarray(y_true, dtype=int)
+    probs_arr = np.asarray(probabilities, dtype=float)
+    total_count = len(amounts_arr)
+    actual_recovered_total = float(np.sum(amounts_arr[y_arr == 1]))
+
+    records = []
+    for tau in thresholds:
+        selected_mask = probs_arr >= tau
+        sel_count = int(np.sum(selected_mask))
+        pct_sel = (sel_count / total_count * 100) if total_count > 0 else 0.0
+        rev_sel = float(np.sum(amounts_arr[selected_mask]))
+        act_rec = float(np.sum(amounts_arr[selected_mask & (y_arr == 1)]))
+        rec_rate = (act_rec / rev_sel * 100) if rev_sel > 0 else 0.0
+        missed_rev = actual_recovered_total - act_rec
+
+        records.append({
+            "threshold": tau,
+            "payments_selected": sel_count,
+            "percentage_selected": round(pct_sel, 2),
+            "revenue_selected": round(rev_sel, 2),
+            "actual_recovered_revenue": round(act_rec, 2),
+            "recovery_rate_pct": round(rec_rate, 2),
+            "missed_recoverable_revenue": round(missed_rev, 2)
+        })
+
+    return records
 
 
 if __name__ == "__main__":

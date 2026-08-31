@@ -14,7 +14,7 @@
     "max_allowed_action_cost_inr": 12.0
   },
   "assumptions": [
-    "Action costs: retry=₹5.00, reminder=₹2.00, payment_link=₹12.00, no_action=₹0.00",
+    "Action costs: retry=\u20b95.00, reminder=\u20b92.00, payment_link=\u20b912.00, no_action=\u20b90.00",
     "Expected Gross Value = P(recovered | features) * transaction_amount",
     "Expected Net Value = Expected Gross Value - Action Cost",
     "Probabilities are model-based expected value proxies, not causal uplift estimates."

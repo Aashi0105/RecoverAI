@@ -162,6 +162,7 @@ def bootstrap_causal_ci(
 
     raw_lifts = []
     ipw_ates = []
+    failed_iterations = 0
 
     for _ in range(n_bootstraps):
         sample_idx = rng.choice(n_samples, size=n_samples, replace=True)
@@ -177,7 +178,15 @@ def bootstrap_causal_ci(
             ipw_res = calculate_ipw_ate(boot_df, p_scores)
             ipw_ates.append(ipw_res["ate_ipw_absolute"])
         except Exception:
-            pass
+            failed_iterations += 1
+
+    if failed_iterations > 0 and failed_iterations > int(n_bootstraps * 0.20):
+        import warnings
+        warnings.warn(
+            f"High number of failed IPW bootstrap iterations ({failed_iterations}/{n_bootstraps}). "
+            "Confidence interval may have reduced sample coverage.",
+            RuntimeWarning
+        )
 
     alpha = (1.0 - confidence_level) / 2.0
     raw_ci = (

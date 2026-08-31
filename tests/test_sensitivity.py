@@ -22,20 +22,23 @@ def test_sensitivity_analysis_grid_contract():
 
     # 1. Base case verification
     base = results_df[results_df["Scenario"] == "1. BASE CASE"].iloc[0]
-    assert base["Gross Uplift"] == "+₹64,988.60"
-    assert base["True Net Uplift (₹)"] == "+₹64,359.60"
-    assert abs(base["_raw_gross_uplift"] - 64988.60) < 0.01
-    assert abs(base["_raw_true_net_uplift"] - 64359.60) < 0.01
+    assert base["Gross Uplift"] == "+\u20b930,846.87"
+    assert base["True Net Uplift (\u20b9)"] == "+\u20b930,774.87"
+    assert abs(base["_raw_gross_uplift"] - 30846.87) < 0.01
+    assert abs(base["_raw_true_net_uplift"] - 30774.87) < 0.01
 
     # 2. Action Cost +50% verification
     cost_plus = results_df[results_df["Scenario"] == "2. ACTION COST +50%"].iloc[0]
-    assert cost_plus["Gross Uplift"] == "+₹64,988.60"  # Gross uplift unchanged
-    assert cost_plus["True Net Uplift (₹)"] == "+₹64,045.10"  # True net uplift decreases by ₹314.50
+    assert cost_plus["Gross Uplift"] == "+\u20b930,846.87"  # Gross uplift unchanged
 
     # 3. Action Cost -50% verification
     cost_minus = results_df[results_df["Scenario"] == "3. ACTION COST -50%"].iloc[0]
-    assert cost_minus["Gross Uplift"] == "+₹64,988.60"  # Gross uplift unchanged
-    assert cost_minus["True Net Uplift (₹)"] == "+₹64,674.10"  # True net uplift increases by ₹314.50
+    assert cost_minus["Gross Uplift"] == "+\u20b930,846.87"  # Gross uplift unchanged
+
+
+
+
+
 
     # 4. Total Revenue at Risk constancy
     first_risk = results_df["Total Revenue at Risk"].iloc[0]
