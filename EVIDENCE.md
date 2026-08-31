@@ -99,19 +99,19 @@ RecoverAI uses a **Decoupled Modular Monolith** architecture:
 
 ## 5. Offline Business Evaluation
 
-Calculated on the untouched held-out test set ($N=633$ failed payments, Total Revenue at Risk = ₹1,579,773.01):
+Calculated on the untouched held-out test set ($N=633$ failed payments, Total Revenue at Risk = ₹1,500,342.08, `seed=42`):
 
 ### A. Core Policy Performance Comparison
 
 | Evaluation Metric | Default Policy ($\tau = 0.50$) | EV-Optimized Policy ($\tau = 0.35$) | Absolute Delta ($\Delta$) |
 | :--- | :---: | :---: | :---: |
-| **Interventions Selected** | 442 transactions | **545 transactions** | $+103$ transactions |
-| **Intervention Coverage Rate** | 69.83% | **86.10%** | $+16.27\%$ coverage |
-| **Realized Recovered Revenue** | ₹835,012.80 | **₹900,001.40** | **$+\text{₹}64,988.60$ gross uplift (+4.11%)** |
-| **Action Costs Incurred** | ₹3,039.00 | **₹3,668.00** | $+\text{₹}629.00$ cost investment |
-| **True Net Realized Revenue** | ₹831,973.80 | **₹896,333.40** | **$+\text{₹}64,359.60$ true net uplift (+4.07%)** |
-| **% Revenue at Risk Captured** | 52.86% | **56.97%** | **$+4.11\%$ total risk captured** |
-| **Recoverable Payment Recall** | 89.09% | **95.84%** | **$+6.75\%$ recoveries saved** |
+| **Interventions Selected** | 498 transactions | **522 transactions** | $+24$ transactions |
+| **Intervention Coverage Rate** | 78.67% | **82.46%** | $+3.79\%$ coverage |
+| **Realized Recovered Revenue** | ₹986,026.63 | **₹1,008,097.35** | **$+\text{₹}22,070.72$ gross uplift (+1.47%)** |
+| **Action Costs Incurred** | ₹4,096.00 | **₹4,144.00** | $+\text{₹}48.00$ cost investment |
+| **Realized Net Value** | ₹981,930.63 | **₹1,003,953.35** | **$+\text{₹}22,022.72$ true net uplift (+1.47%)** |
+| **% Revenue at Risk Captured** | 65.72% | **67.19%** | **$+1.47\%$ total risk captured** |
+| **Recoverable Payment Recall** | 91.90% | **94.91%** | **$+3.01\%$ recoveries saved** |
 
 ### B. 6-Scenario Financial Sensitivity Analysis Grid
 
@@ -119,12 +119,13 @@ Verified via `evaluation/sensitivity_analysis.py` across 6 stress scenarios:
 
 | Scenario | Cost Multiplier | Threshold / Prob Shift | Realized Gross Uplift | True Net Uplift (₹) | True Net Uplift (%) | Status |
 | :--- | :---: | :---: | :---: | :---: | :---: | :---: |
-| **1. BASE CASE** | 1.0x | $\tau = 0.35, \Delta P = 0.00$ | +₹64,988.60 | **+₹64,359.60** | **+4.07%** | **Baseline** |
-| **2. ACTION COST +50%** | 1.5x | $\tau = 0.35, \Delta P = 0.00$ | +₹64,988.60 | **+₹64,045.10** | **+4.05%** | **Robust** |
-| **3. ACTION COST -50%** | 0.5x | $\tau = 0.35, \Delta P = 0.00$ | +₹64,988.60 | **+₹64,674.10** | **+4.09%** | **Robust** |
-| **4. THRESHOLD +0.05** | 1.0x | $\tau = 0.40, \Delta P = 0.00$ | +₹48,819.80 | **+₹48,460.80** | **+3.07%** | **Robust** |
-| **5. THRESHOLD -0.05** | 1.0x | $\tau = 0.30, \Delta P = 0.00$ | +₹65,068.60 | **+₹64,286.60** | **+4.07%** | **Robust** |
-| **6. PROBABILITY MISCALIBRATION** | 1.0x | $\tau = 0.35, \Delta P = -0.05$ | +₹60,120.40 | **+₹59,510.40** | **+3.77%** | **Robust** |
+| **1. BASE CASE** | 1.0x | $\tau = 0.35, \Delta P = 0.00$ | +₹22,070.72 | **+₹22,022.72** | **+1.47%** | **Baseline** |
+| **2. ACTION COST +50%** | 1.5x | $\tau = 0.35, \Delta P = 0.00$ | +₹22,070.72 | **+₹21,998.72** | **+1.47%** | **Robust** |
+| **3. ACTION COST -50%** | 0.5x | $\tau = 0.35, \Delta P = 0.00$ | +₹22,070.72 | **+₹22,046.72** | **+1.47%** | **Robust** |
+| **4. THRESHOLD +0.05** | 1.0x | $\tau = 0.40, \Delta P = 0.00$ | +₹22,070.72 | **+₹22,022.72** | **+1.47%** | **Robust** |
+| **5. THRESHOLD -0.05** | 1.0x | $\tau = 0.30, \Delta P = 0.00$ | +₹22,070.72 | **+₹22,022.72** | **+1.47%** | **Robust** |
+| **6. PROBABILITY MISCALIBRATION** | 1.0x | $\tau = 0.35, \Delta P = -0.05$ | +₹38,813.32 | **+₹38,765.32** | **+2.58%** | **Robust** |
+
 
 ### C. Causal Treatment Effect (IPW) Evaluation
 

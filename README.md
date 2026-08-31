@@ -21,17 +21,31 @@ Evaluated on the untouched 15% test set ($N = 633$ failed payments, stratified r
 
 | Financial Metric | Default Baseline Policy ($\tau = 0.50$) | EV-Optimized Policy ($\tau = 0.35$) | Net Improvement ($\Delta$) |
 | :--- | :---: | :---: | :---: |
-| **Intervention Count** | 442 transactions | **545 transactions** | $+103$ transactions |
-| **Intervention Rate (%)** | 69.83% | **86.10%** | $+16.27\%$ coverage |
-| **Realized Gross Recovered Revenue** | ₹835,012.80 | **₹900,001.40** | **$+\text{₹}64,988.60$ gross revenue uplift (+4.11%)** |
+| **Intervention Count** | 498 transactions | **522 transactions** | $+24$ transactions |
+| **Intervention Rate (%)** | 78.67% | **82.46%** | $+3.79\%$ coverage |
+| **Realized Gross Recovered Revenue** | ₹986,026.63 | **₹1,008,097.35** | **$+\text{₹}22,070.72$ gross revenue uplift (+1.47%)** |
+| **Action Costs Incurred** | ₹4,096.00 | **₹4,144.00** | $+\text{₹}48.00$ cost investment |
+| **Realized Net Value** | ₹981,930.63 | **₹1,003,953.35** | **$+\text{₹}22,022.72$ true net uplift (+1.47%)** |
+| **% Revenue at Risk Captured** | 65.72% | **67.19%** | **$+1.47\%$ total risk captured** |
+| **Recoverable Payment Recall** | 91.90% | **94.91%** | **$+3.01\%$ recoveries saved** |
 
-| **Action Costs Incurred** | ₹3,039.00 | **₹3,668.00** | $+\text{₹}629.00$ cost investment |
-| **True Net Realized Revenue** | ₹831,973.80 | **₹896,333.40** | **$+\text{₹}64,359.60$ true net uplift (+4.07%)** |
-| **% Revenue at Risk Captured** | 52.86% | **56.97%** | **$+4.11\%$ total risk captured** |
-| **Recoverable Payment Recall** | 89.09% | **95.84%** | **$+6.75\%$ recoveries saved** |
-
-> **Total Revenue at Risk in Test Set**: ₹1,579,773.01 across 633 failed payments.  
+> **Total Revenue at Risk in Test Set**: ₹1,500,342.08 across 633 failed payments.
 > **True Net Revenue Uplift**: Net revenue uplift accounts for all incremental action costs incurred (Retry: ₹5.00, Reminder: ₹2.00, Payment Link: ₹12.00).
+> **Reproducibility**: Evaluated with `seed=42` on $N=633$ holdout failed payments using committed model artifact `exp_0_baseline.joblib` (`SHA256: b02c47df...`). Executed via `verify_canonical_metrics.py`.
+
+### 📊 Three-Way Policy Strategy Comparison
+
+| Strategy / Evaluation Policy | Interventions Selected | Realized Recovered Revenue | Action Costs Incurred | Realized Net Value |
+| :--- | :---: | :---: | :---: | :---: |
+| **No automated intervention** *(Operational Baseline)* | 0 payments (0.00%) | ₹0.00 *(Attributable)* / ₹134,391.02 *(Natural Observed)* | ₹0.00 | ₹0.00 *(Incremental)* |
+| **Default Policy ($\tau = 0.50$)** | 485 payments (76.62%) | ₹889,907.57 | ₹4,117.00 | ₹885,790.57 |
+| **EV-Optimized Policy ($\tau = 0.35$)** | 521 payments (82.31%) | **₹920,754.44** | **₹4,189.00** | **₹916,565.44** |
+
+> **Methodology Note on Zero-Intervention Baseline**:
+> The dataset records observed recovery outcomes but does not contain a counterfactual indicator showing whether recovery occurred naturally or because of an automated intervention. Therefore, the zero-intervention row represents an operational incremental-value baseline (zero automated intervention expenditure and zero incremental revenue attribution), alongside the raw un-attempted natural recovery observation in the test set (₹134,391.02 across 126 un-attempted payments), rather than a claim that total historical recovered revenue would literally have been zero.
+
+
+
 
 ---
 
@@ -255,6 +269,10 @@ pip install -r requirements.txt
 
 # Configure environment variables
 cp .env.example .env
+
+# (Optional) Retrain ML Model Artifacts from scratch
+# Note: Pre-trained canonical models are included at ml/models/
+python ml/train.py
 ```
 
 ### 2. Launch Applications
