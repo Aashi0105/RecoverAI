@@ -7,10 +7,13 @@ recovery actions, and immutable audit logs in PostgreSQL / SQLite.
 
 import uuid
 import json
+import threading
 from datetime import datetime, timezone
 from typing import Dict, Any, Optional, List, Tuple
 from sqlalchemy.orm import Session
-from database.models import FailedPayment, RecoveryAction, AuditLog, PaymentExecutionClaim
+from database.models import FailedPayment, RecoveryAction, AuditLog, PaymentExecutionClaim, ApprovalRequest
+
+_APPROVAL_LOCK = threading.Lock()
 
 
 def save_recovery_audit(db: Session, agent_result: Dict[str, Any]) -> AuditLog:
@@ -72,6 +75,40 @@ def save_recovery_audit(db: Session, agent_result: Dict[str, Any]) -> AuditLog:
             timestamp=datetime.now(timezone.utc)
         )
         db.add(audit_log)
+
+        # 4. If transaction requires human merchant review, queue into ApprovalRequest
+        if agent_result.get("agent_status") == "AWAITING_APPROVAL" or agent_result.get("policy_decision") in ["ESCALATE", "HUMAN_APPROVAL"]:
+            approval_req = db.query(ApprovalRequest).filter(ApprovalRequest.transaction_id == txn_id).first()
+            diag = agent_result.get("failure_diagnosis") or {}
+            diag_str = diag.get("diagnosis", str(diag)) if isinstance(diag, dict) else str(diag)
+            diag_sev = diag.get("severity", "MEDIUM") if isinstance(diag, dict) else "MEDIUM"
+
+            if not approval_req:
+                approval_req = ApprovalRequest(
+                    id=txn_id,
+                    transaction_id=txn_id,
+                    merchant_id=str(agent_result.get("merchant_id", "merch_001")),
+                    customer_id=str(agent_result.get("customer_id", "cust_001")),
+                    amount=float(agent_result.get("amount", 0.0)),
+                    currency=str(agent_result.get("currency", "INR")),
+                    failure_reason=str(agent_result.get("failure_reason", "unknown")),
+                    failure_category=str(agent_result.get("failure_category", "unknown")),
+                    recovery_probability=float(agent_result.get("recovery_probability", 0.0)) if agent_result.get("recovery_probability") is not None else None,
+                    expected_recovery_value=float(agent_result.get("expected_recovery_value", 0.0)) if agent_result.get("expected_recovery_value") is not None else None,
+                    recommended_action=str(agent_result.get("recommended_action", "payment_link")),
+                    recommendation_reason=str(agent_result.get("recommendation_reason", "")),
+                    recommendation_confidence=float(agent_result.get("recommendation_confidence", 0.8)) if agent_result.get("recommendation_confidence") is not None else None,
+                    recommendation_factors=agent_result.get("recommendation_factors", []),
+                    recommendation_expected_benefit=str(agent_result.get("recommendation_expected_benefit", "")),
+                    diagnosis_summary=diag_str,
+                    diagnosis_severity=diag_sev,
+                    policy_decision=str(agent_result.get("policy_decision", "ESCALATE")),
+                    policy_reason=str(agent_result.get("policy_reason", "")),
+                    policy_violations=agent_result.get("policy_violations", []),
+                    status="PENDING_APPROVAL",
+                    created_at=datetime.now(timezone.utc)
+                )
+                db.add(approval_req)
 
         db.commit()
         db.refresh(audit_log)
@@ -460,5 +497,252 @@ def process_webhook_lifecycle_event(
     except Exception as e:
         db.rollback()
         raise RuntimeError(f"Database error during webhook event processing: {str(e)}") from e
+
+
+# =============================================================================
+# HUMAN-IN-THE-LOOP (HITL) APPROVAL WORKFLOW
+# =============================================================================
+
+def list_pending_approvals(
+    db: Session,
+    merchant_id: Optional[str] = None,
+    limit: int = 50
+) -> List[ApprovalRequest]:
+    """Retrieves pending human approval requests ordered by creation time descending."""
+    query = db.query(ApprovalRequest).filter(ApprovalRequest.status == "PENDING_APPROVAL")
+    if merchant_id:
+        query = query.filter(ApprovalRequest.merchant_id == merchant_id)
+    return query.order_by(ApprovalRequest.created_at.desc()).limit(limit).all()
+
+
+def get_approval_request(db: Session, transaction_id: str) -> Optional[ApprovalRequest]:
+    """Retrieves approval request by transaction_id."""
+    return db.query(ApprovalRequest).filter(ApprovalRequest.transaction_id == transaction_id).first()
+
+
+def approve_recovery_action(
+    db: Session,
+    transaction_id: str,
+    human_notes: Optional[str] = None,
+    dry_run: bool = False
+) -> Tuple[bool, str, Dict[str, Any]]:
+    """
+    Approves a transaction awaiting merchant review and triggers controlled execution.
+    Returns (success: bool, status_code_label: str, result_payload: Dict[str, Any]).
+
+    Safety Invariants:
+    1. Rejects unknown transactions (NOT_FOUND).
+    2. Rejects transactions blocked by policy (CANNOT_APPROVE_BLOCKED).
+    3. Idempotent for already approved transactions (ALREADY_APPROVED).
+    4. Rejects transactions already rejected by merchant (ALREADY_REJECTED).
+    5. Atomic execution claim prevents double-execution under concurrency.
+    """
+    from payment.executor import execute_recovery_policy
+
+    with _APPROVAL_LOCK:
+        approval_req = get_approval_request(db, transaction_id)
+        now = datetime.now(timezone.utc)
+
+        # 1. Validation & Safety checks
+        if not approval_req:
+            # Check if transaction exists in FailedPayment or AuditLog as blocked
+            payment = db.query(FailedPayment).filter(FailedPayment.id == transaction_id).first()
+            if payment:
+                audit = db.query(AuditLog).filter(AuditLog.payment_id == transaction_id).first()
+                audit_details = audit.details if audit and isinstance(audit.details, dict) else {}
+                policy_dec = audit_details.get("policy_decision")
+                if payment.status in ["BLOCKED", "REFUSE"] or policy_dec in ["REFUSE", "BLOCKED"]:
+                    return False, "CANNOT_APPROVE_BLOCKED", {
+                        "error": "CANNOT_APPROVE_BLOCKED",
+                        "message": "Transaction was blocked by deterministic fraud/risk policy and cannot be approved by human."
+                    }
+            return False, "NOT_FOUND", {
+                "error": "NOT_FOUND",
+                "message": f"Approval request for transaction '{transaction_id}' was not found."
+            }
+
+        # Already rejected check
+        if approval_req.status == "REJECTED_BY_HUMAN":
+            return False, "ALREADY_REJECTED", {
+                "error": "ALREADY_REJECTED",
+                "message": f"Transaction '{transaction_id}' has already been rejected by merchant. Cannot approve."
+            }
+
+        # Already approved / executed check (Idempotent reuse)
+        if approval_req.status in ["APPROVED_BY_HUMAN", "EXECUTED"]:
+            return True, "ALREADY_APPROVED", {
+                "message": f"Transaction '{transaction_id}' has already been approved.",
+                "transaction_id": transaction_id,
+                "status": approval_req.status,
+                "human_decision": approval_req.human_decision,
+                "human_notes": approval_req.human_notes,
+                "execution_details": approval_req.execution_details
+            }
+
+        if approval_req.status != "PENDING_APPROVAL":
+            return False, "INVALID_STATE", {
+                "error": "INVALID_STATE",
+                "message": f"Transaction '{transaction_id}' is in status '{approval_req.status}' and cannot be approved."
+            }
+
+        # 2. Mark as APPROVED_BY_HUMAN
+        approval_req.status = "APPROVED_BY_HUMAN"
+        approval_req.human_decision = "APPROVED"
+        approval_req.human_notes = human_notes
+        approval_req.resolved_at = now
+        db.commit()
+        db.refresh(approval_req)
+
+        # 3. Controlled Execution via Payment Executor
+        policy_eval = {
+            "transaction_id": transaction_id,
+            "customer_id": approval_req.customer_id,
+            "amount": approval_req.amount,
+            "failure_reason": approval_req.failure_reason,
+            "failure_category": approval_req.failure_category,
+            "recovery_probability": approval_req.recovery_probability or 0.5,
+            "decision": "ACT",  # Human authorized!
+            "recommended_action": approval_req.recommended_action,
+            "justification": f"Human merchant approval granted. Notes: {human_notes or 'None'}"
+        }
+
+        try:
+            exec_res = execute_recovery_policy(policy_eval, dry_run=dry_run)
+        except Exception as e:
+            exec_res = {
+                "execution_status": "FAILED",
+                "error": str(e)
+            }
+
+        exec_status = exec_res.get("execution_status", "FAILED")
+        if exec_status in ["SUCCEEDED", "SIMULATED_DRY_RUN", "IDEMPOTENT_SKIPPED"]:
+            approval_req.status = "EXECUTED"
+        else:
+            approval_req.status = "EXECUTION_FAILED"
+
+        approval_req.execution_details = exec_res
+
+        # 4. Update FailedPayment
+        payment = db.query(FailedPayment).filter(FailedPayment.id == transaction_id).first()
+        if payment:
+            payment.status = "APPROVED"
+
+        # 5. Upsert RecoveryAction
+        action_id = f"act_{uuid.uuid4().hex[:8]}"
+        rec_action = RecoveryAction(
+            id=action_id,
+            payment_id=transaction_id,
+            action_type=approval_req.recommended_action,
+            policy_checked=True,
+            approved_by_human=True,
+            executed_at=now,
+            result_status="SUCCESS" if approval_req.status == "EXECUTED" else "FAILED",
+            result_details=exec_res
+        )
+        db.add(rec_action)
+
+        # 6. Append Immutable AuditLog
+        audit_log = AuditLog(
+            payment_id=transaction_id,
+            event_type="MERCHANT_APPROVAL",
+            actor="MERCHANT_HUMAN",
+            details={
+                "transaction_id": transaction_id,
+                "decision": "APPROVED",
+                "notes": human_notes,
+                "action_executed": approval_req.recommended_action,
+                "execution_status": exec_status,
+                "execution_details": exec_res,
+                "timestamp": now.isoformat()
+            },
+            timestamp=now
+        )
+        db.add(audit_log)
+        db.commit()
+        db.refresh(approval_req)
+
+        return True, "APPROVED", {
+            "message": f"Transaction '{transaction_id}' successfully approved and executed.",
+            "transaction_id": transaction_id,
+            "status": approval_req.status,
+            "human_decision": "APPROVED",
+            "human_notes": human_notes,
+            "execution_details": exec_res
+        }
+
+
+def reject_recovery_action(
+    db: Session,
+    transaction_id: str,
+    human_notes: Optional[str] = None
+) -> Tuple[bool, str, Dict[str, Any]]:
+    """
+    Rejects a transaction awaiting merchant review.
+    Ensures zero payment recovery actions are executed.
+    """
+    with _APPROVAL_LOCK:
+        approval_req = get_approval_request(db, transaction_id)
+        now = datetime.now(timezone.utc)
+
+        if not approval_req:
+            return False, "NOT_FOUND", {
+                "error": "NOT_FOUND",
+                "message": f"Approval request for transaction '{transaction_id}' was not found."
+            }
+
+        # Already approved check
+        if approval_req.status in ["APPROVED_BY_HUMAN", "EXECUTED"]:
+            return False, "ALREADY_APPROVED", {
+                "error": "ALREADY_APPROVED",
+                "message": f"Transaction '{transaction_id}' has already been approved and executed. Cannot reject."
+            }
+
+        # Idempotent rejection check
+        if approval_req.status == "REJECTED_BY_HUMAN":
+            return True, "ALREADY_REJECTED", {
+                "message": f"Transaction '{transaction_id}' is already rejected.",
+                "transaction_id": transaction_id,
+                "status": "REJECTED_BY_HUMAN",
+                "human_decision": "REJECTED",
+                "human_notes": approval_req.human_notes
+            }
+
+        # Mark as REJECTED_BY_HUMAN
+        approval_req.status = "REJECTED_BY_HUMAN"
+        approval_req.human_decision = "REJECTED"
+        approval_req.human_notes = human_notes
+        approval_req.resolved_at = now
+
+        # Update FailedPayment
+        payment = db.query(FailedPayment).filter(FailedPayment.id == transaction_id).first()
+        if payment:
+            payment.status = "REJECTED"
+
+        # Append Immutable AuditLog
+        audit_log = AuditLog(
+            payment_id=transaction_id,
+            event_type="MERCHANT_REJECTION",
+            actor="MERCHANT_HUMAN",
+            details={
+                "transaction_id": transaction_id,
+                "decision": "REJECTED",
+                "notes": human_notes,
+                "action_executed": None,
+                "timestamp": now.isoformat()
+            },
+            timestamp=now
+        )
+        db.add(audit_log)
+        db.commit()
+        db.refresh(approval_req)
+
+        return True, "REJECTED", {
+            "message": f"Transaction '{transaction_id}' rejected. Zero payment recovery actions executed.",
+            "transaction_id": transaction_id,
+            "status": "REJECTED_BY_HUMAN",
+            "human_decision": "REJECTED",
+            "human_notes": human_notes
+        }
+
 
 
