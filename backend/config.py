@@ -14,8 +14,12 @@ class Settings(BaseSettings):
     RAZORPAY_WEBHOOK_SECRET: str = ""
     RAZORPAY_ENABLED: bool = False
     
-    # LLM Settings
+    # LLM Settings & Provider Configuration
+    LLM_PROVIDER: str = "groq"
     LLM_API_KEY: str = ""
+    LLM_MODEL: str = "llama-3.3-70b-versatile"
+    LLM_ENABLED: bool = False
+    LLM_BASE_URL: str = ""
     
     # Database
     DATABASE_URL: str = "sqlite:///./recover_ai.db"

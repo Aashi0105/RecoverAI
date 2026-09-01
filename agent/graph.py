@@ -120,7 +120,10 @@ def run_agent(transaction: Dict[str, Any]) -> Dict[str, Any]:
         "verification_status": final_state.get("verification_result", {}).get("verification_status", "not_executed"),
         "money_recovered": final_state.get("money_recovered", 0.0),
         "agent_status": final_state.get("agent_status"),
-        "audit_event": final_state.get("audit_event")
+        "audit_event": final_state.get("audit_event"),
+        "diagnosis_source": final_state.get("diagnosis_source", "heuristic"),
+        "recommendation_source": final_state.get("recommendation_source", "heuristic"),
+        "recommendation_factors": final_state.get("recommendation_factors", [])
     }
     return res
 

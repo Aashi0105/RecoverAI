@@ -44,11 +44,15 @@ class AgentState(TypedDict, total=False):
 
     # Diagnosis Output
     failure_diagnosis: Dict[str, Any]
+    diagnosis_source: str  # 'llm', 'heuristic'
 
     # Recommendation Output
     recommended_action: str  # 'retry', 'payment_link', 'reminder', 'escalate', 'no_action'
     recommendation_reason: str
     recommendation_confidence: float
+    recommendation_source: str  # 'llm', 'heuristic'
+    recommendation_factors: List[str]
+    recommendation_expected_benefit: Optional[str]
 
     # Deterministic Policy Guard Output
     policy_decision: str  # 'APPROVED', 'BLOCKED', 'HUMAN_APPROVAL'
