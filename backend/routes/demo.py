@@ -42,7 +42,9 @@ PREDEFINED_SCENARIOS: Dict[str, Dict[str, Any]] = {
         "expected_action": "retry",
         "amount": 2500.0,
         "failure_reason": "network_timeout",
-        "failure_category": "transient"
+        "failure_category": "transient",
+        "business_title": "💰 Autonomous Revenue Recovery",
+        "business_impact": "₹2,500 recovery action successfully initiated autonomously without requiring manual human intervention."
     },
     "human_approval": {
         "id": "human_approval",
@@ -53,7 +55,9 @@ PREDEFINED_SCENARIOS: Dict[str, Dict[str, Any]] = {
         "expected_action": "retry",
         "amount": 14500.0,
         "failure_reason": "network_timeout",
-        "failure_category": "transient"
+        "failure_category": "transient",
+        "business_title": "🛡️ Controlled High-Value Recovery",
+        "business_impact": f"₹14,500 high-value action required merchant approval. Autonomous execution was safely halted by policy guard."
     },
     "fraud_block": {
         "id": "fraud_block",
@@ -64,18 +68,22 @@ PREDEFINED_SCENARIOS: Dict[str, Dict[str, Any]] = {
         "expected_action": "no_action",
         "amount": 7500.0,
         "failure_reason": "suspected_risk",
-        "failure_category": "risk_related"
+        "failure_category": "risk_related",
+        "business_title": "🚨 Chargeback & Fraud Protection",
+        "business_impact": "Potential recovery action was blocked due to critical IP fraud risk (0.92). Zero external money movement occurred."
     },
     "low_probability": {
         "id": "low_probability",
-        "name": "Scenario D — Low Recovery Probability",
-        "description": "Persistent failure history with recovery probability below policy threshold (Tau = 0.35). System rationally refuses recovery to prevent burning action fees on hopeless attempts.",
+        "name": "Scenario D — Low Recovery Probability / Negative EV",
+        "description": "Persistent bank decline with recovery probability below policy threshold (Tau = 0.35). System rationally refuses recovery to prevent burning action fees on hopeless attempts.",
         "expected_flow": "Analysis -> ML Probability < 0.35 -> Negative Expected Value -> Policy REFUSE -> Spend Protected",
         "expected_decision": "REFUSE",
         "expected_action": "no_action",
         "amount": 3200.0,
-        "failure_reason": "insufficient_funds",
-        "failure_category": "customer_action_required"
+        "failure_reason": "bank_declined",
+        "failure_category": "bank_decline",
+        "business_title": "📉 Negative EV & Fee Avoidance",
+        "business_impact": "Low-probability recovery attempt was avoided. Customer spam and unnecessary action fees prevented."
     }
 }
 
@@ -307,12 +315,18 @@ def simulate_demo_scenario(
             customer_id="cust_churned_04",
             merchant_id="merch_razorpay_demo",
             amount=amt,
-            failure_reason="insufficient_funds",
-            failure_category="customer_action_required",
-            customer_historical_success_rate=0.10,
-            previous_failures_24h=4,
-            recovery_attempt_count=3,
-            ip_risk_score=0.20
+            customer_average_transaction=1200.0,
+            failure_reason="bank_declined",
+            failure_category="bank_decline",
+            payment_method="netbanking",
+            payment_network="axis",
+            payment_channel="web",
+            customer_historical_success_rate=0.0,
+            customer_previous_transactions=2,
+            previous_failures_24h=2,
+            recovery_attempt_count=2,
+            ip_risk_score=0.30,
+            velocity_score=0.85
         )
     else:
         txn = build_test_transaction(transaction_id=txn_id, amount=amt)
@@ -338,6 +352,7 @@ def simulate_demo_scenario(
 
     # 5. Build timeline
     timeline = construct_timeline(result, scen_key, closed_loop=closed_loop_applied)
+    is_matched = bool(result.get("policy_decision") == scen_info.get("expected_decision"))
 
     return DemoSimulationResponse(
         scenario=scen_key,
@@ -360,6 +375,10 @@ def simulate_demo_scenario(
         policy_decision=result.get("policy_decision", "REFUSE"),
         policy_reason=result.get("policy_reason", ""),
         policy_violations=result.get("policy_violations", []),
+        expected_decision=scen_info.get("expected_decision", "ACT"),
+        is_policy_matched=is_matched,
+        business_title=scen_info.get("business_title", ""),
+        business_impact=scen_info.get("business_impact", ""),
         action_status=result.get("action_status", "not_executed"),
         selected_action=result.get("selected_action"),
         action_reference=result.get("action_reference"),

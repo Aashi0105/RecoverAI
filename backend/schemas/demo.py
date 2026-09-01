@@ -60,6 +60,10 @@ class DemoSimulationResponse(BaseModel):
     policy_decision: str
     policy_reason: str
     policy_violations: List[str] = Field(default_factory=list)
+    expected_decision: str = "ACT"
+    is_policy_matched: bool = True
+    business_title: str = ""
+    business_impact: str = ""
     action_status: str
     selected_action: Optional[str] = None
     action_reference: Optional[str] = None

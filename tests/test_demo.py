@@ -146,8 +146,12 @@ def test_6_simulate_low_probability_scenario(client, db_session):
     data = response.json()
     assert data["scenario"] == "low_probability"
     assert data["policy_decision"] == "REFUSE"
+    assert data["recovery_probability"] < 0.35
+    assert data["expected_decision"] == "REFUSE"
+    assert data["is_policy_matched"] is True
     assert data["action_status"] == "not_executed"
     assert data["money_recovered"] == 0.0
+    assert "Negative EV" in data["business_title"]
 
 
 def test_7_simulate_invalid_scenario_returns_400(client):
@@ -170,3 +174,29 @@ def test_8_simulate_webhook_closed_loop(client, db_session):
     assert webhook_resp.status_code == 200
     data = webhook_resp.json()
     assert data["payment_status"] == "RECOVERED"
+
+
+def test_9_scenario_replay_determinism_and_isolation(client, db_session):
+    """
+    Verifies that running scenarios A -> B -> C -> D -> A in sequence
+    replays safely with zero state contamination and consistent policy verdicts.
+    """
+    sequence = [
+        ("auto_recovery", "ACT"),
+        ("human_approval", "ESCALATE"),
+        ("fraud_block", "REFUSE"),
+        ("low_probability", "REFUSE"),
+        ("auto_recovery", "ACT")  # Replay A
+    ]
+
+    seen_txn_ids = set()
+    for scenario_name, expected_policy in sequence:
+        resp = client.post("/api/v1/demo/simulate", json={"scenario": scenario_name})
+        assert resp.status_code == 200
+        d = resp.json()
+        assert d["policy_decision"] == expected_policy
+        assert d["expected_decision"] == expected_policy
+        assert d["is_policy_matched"] is True
+        assert d["transaction_id"] not in seen_txn_ids, f"Duplicate txn_id {d['transaction_id']} on replay"
+        seen_txn_ids.add(d["transaction_id"])
+
