@@ -32,7 +32,7 @@ The goal of this record is to maintain strict scientific and technical honesty b
 | **PSI Feature Drift Detection** | 10 quantile binning feature drift monitoring against frozen baseline snapshot ($N=3,581$). | [monitoring/drift_detection.py](file:///c:/Users/Aashi/OneDrive/Desktop/RecoverAI%20%E2%80%94%20AI%20Revenue%20Recovery%20Agent/monitoring/drift_detection.py), [monitoring/baseline_snapshot.json](file:///c:/Users/Aashi/OneDrive/Desktop/RecoverAI%20%E2%80%94%20AI%20Revenue%20Recovery%20Agent/monitoring/baseline_snapshot.json) | **VERIFIED** | Appends structured audit events to `logs/drift_audit.jsonl` (`persist=False` in dashboard UI). |
 | **Razorpay Test Mode Integration** | SDK integration using `razorpay.Client` creating Test Mode Payment Links (`rzp_test_...`). | [payment/razorpay_client.py](file:///c:/Users/Aashi/OneDrive/Desktop/RecoverAI%20%E2%80%94%20AI%20Revenue%20Recovery%20Agent/payment/razorpay_client.py), [payment/executor.py](file:///c:/Users/Aashi/OneDrive/Desktop/RecoverAI%20%E2%80%94%20AI%20Revenue%20Recovery%20Agent/payment/executor.py) | **VERIFIED (TEST MODE ONLY)** | Key prefix validation enforced. Default `dry_run=True` flag prevents network calls unless toggled. |
 | **Streamlit Interactive Dashboard** | Live Web Decision Center with top metric cards, demo buttons, Plotly charts, and drift expander. | [frontend/app.py](file:///c:/Users/Aashi/OneDrive/Desktop/RecoverAI%20%E2%80%94%20AI%20Revenue%20Recovery%20Agent/frontend/app.py) | **VERIFIED** | Runs locally on `http://localhost:8501` without tracebacks or Streamlit error boxes. |
-| **Automated Test Suite** | 38 automated Pytest test cases across 8 suites, including 10,000 property-tested boundary iterations. | [tests/](file:///c:/Users/Aashi/OneDrive/Desktop/RecoverAI%20%E2%80%94%20AI%20Revenue%20Recovery%20Agent/tests) | **VERIFIED** | 100% pass rate (`pytest tests/ -v`). |
+| **Automated Test Suite** | 143 automated Pytest test cases across 13 test suites, including 10,000 property-tested boundary iterations. | [tests/](file:///c:/Users/Aashi/OneDrive/Desktop/RecoverAI%20%E2%80%94%20AI%20Revenue%20Recovery%20Agent/tests) | **VERIFIED** | 100% pass rate (`pytest tests/ -v`). |
 
 ---
 
@@ -189,24 +189,12 @@ Implemented in [agent/nodes/policy.py](file:///c:/Users/Aashi/OneDrive/Desktop/R
 All commands are valid and runnable from the repository root:
 
 ```bash
-# 1. Run Complete 38-Test Pytest Suite
+# 1. Run Complete 143-Test Pytest Suite
 pytest tests/ -v
 
-# 2. Verify Financial Metrics & Ground-Truth Calculations
-python run_metric_comparison_audit.py
-
-# 3. Verify Decision Paths (ACT / ESCALATE / REFUSE)
-python test_dashboard_demo_paths.py
-
-# 4. Verify Interactive UI State Sequences
-python test_interactive_ui_sequences.py
-
-# 5. Verify Streamlit Rerun Audit Persistence Fix
-python verify_streamlit_duplication_fix.py
-
-# 6. Launch Streamlit Web Dashboard
+# 2. Launch Streamlit Operations Dashboard
 streamlit run frontend/app.py
 
-# 7. Launch FastAPI REST Backend
+# 3. Launch FastAPI REST Backend
 uvicorn backend.main:app --reload --port 8000
 ```
