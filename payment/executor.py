@@ -114,7 +114,7 @@ def execute_recovery_policy(
         return audit_record
 
     # -------------------------------------------------------------------------
-    # IDEMPOTENCY & CONCURRENCY ATOMIC CLAIM GATING
+    # IDEMPOTENCY & CONCURRENCY ATOMIC CLAIM GATING & EXECUTION
     # -------------------------------------------------------------------------
     idempotency_key = f"idemp_{txn_id}"
 
@@ -163,79 +163,72 @@ def execute_recovery_policy(
                     audit_record["justification"] = "Execution blocked to prevent duplicate payment link creation."
                     return audit_record
 
-        finally:
-            db.close()
+            # -------------------------------------------------------------------------
+            # LIVE TEST MODE EXECUTION (decision == 'ACT' AND dry_run == False)
+            # -------------------------------------------------------------------------
+            if action == "payment_link":
+                if not is_razorpay_configured():
+                    audit_record["execution_status"] = "CREDENTIALS_MISSING"
+                    audit_record["error_message"] = "Razorpay TEST MODE credentials (RAZORPAY_KEY_ID) not found in environment."
+                    audit_record["justification"] = "Action 'payment_link' failed due to missing API keys."
+                    mark_execution_failed_safe(db, idempotency_key, "Razorpay TEST MODE credentials missing.")
+                    return audit_record
 
-    # -------------------------------------------------------------------------
-    # LIVE TEST MODE EXECUTION (decision == 'ACT' AND dry_run == False)
-    # -------------------------------------------------------------------------
-    if action == "payment_link":
-        if not is_razorpay_configured():
-            audit_record["execution_status"] = "CREDENTIALS_MISSING"
-            audit_record["error_message"] = "Razorpay TEST MODE credentials (RAZORPAY_KEY_ID) not found in environment."
-            audit_record["justification"] = "Action 'payment_link' failed due to missing API keys."
-            db = SessionLocal()
-            try:
-                mark_execution_failed_safe(db, idempotency_key, "Razorpay TEST MODE credentials missing.")
-            finally:
-                db.close()
-            return audit_record
+                try:
+                    api_res = create_razorpay_test_payment_link(
+                        amount=amount,
+                        customer_info=customer_info,
+                        description=f"RecoverAI Recovery Link for {txn_id}",
+                        reference_id=txn_id
+                    )
 
-        db = SessionLocal()
-        try:
-            api_res = create_razorpay_test_payment_link(
-                amount=amount,
-                customer_info=customer_info,
-                description=f"RecoverAI Recovery Link for {txn_id}",
-                reference_id=txn_id
-            )
+                    audit_record["external_api_called"] = True
+                    if api_res.get("success"):
+                        audit_record["execution_status"] = "SUCCESS_CREATED"
+                        audit_record["razorpay_reference_id"] = api_res.get("payment_link_id")
+                        audit_record["short_url"] = api_res.get("short_url")
+                        audit_record["justification"] = f"Razorpay Test Payment Link created successfully: {api_res.get('short_url')}"
+                        mark_execution_succeeded(
+                            db,
+                            idempotency_key,
+                            payment_link_id=api_res.get("payment_link_id"),
+                            short_url=api_res.get("short_url"),
+                            result_details=api_res
+                        )
+                    else:
+                        audit_record["execution_status"] = "API_ERROR"
+                        audit_record["error_message"] = api_res.get("error_message")
+                        audit_record["justification"] = f"Razorpay Test Link API call failed: {api_res.get('error_message')}"
+                        mark_execution_unknown(db, idempotency_key, api_res.get("error_message", "API Error"))
+                except Exception as exc:
+                    audit_record["execution_status"] = "UNKNOWN_EXTERNAL_RESULT"
+                    audit_record["error_message"] = str(exc)
+                    audit_record["justification"] = f"Exception during Razorpay execution: {str(exc)}"
+                    mark_execution_unknown(db, idempotency_key, str(exc))
 
-            audit_record["external_api_called"] = True
-            if api_res.get("success"):
-                audit_record["execution_status"] = "SUCCESS_CREATED"
-                audit_record["razorpay_reference_id"] = api_res.get("payment_link_id")
-                audit_record["short_url"] = api_res.get("short_url")
-                audit_record["justification"] = f"Razorpay Test Payment Link created successfully: {api_res.get('short_url')}"
-                mark_execution_succeeded(
-                    db,
-                    idempotency_key,
-                    payment_link_id=api_res.get("payment_link_id"),
-                    short_url=api_res.get("short_url"),
-                    result_details=api_res
+            elif action == "retry":
+                audit_record["execution_status"] = "NOT_SUPPORTED"
+                audit_record["external_api_called"] = False
+                audit_record["justification"] = (
+                    "Automatic retry requires an existing tokenized card mandate context and is "
+                    "truthfully reported as NOT_SUPPORTED rather than creating a fake successful payment."
                 )
-            else:
-                audit_record["execution_status"] = "API_ERROR"
-                audit_record["error_message"] = api_res.get("error_message")
-                audit_record["justification"] = f"Razorpay Test Link API call failed: {api_res.get('error_message')}"
-                mark_execution_unknown(db, idempotency_key, api_res.get("error_message", "API Error"))
-        except Exception as exc:
-            audit_record["execution_status"] = "UNKNOWN_EXTERNAL_RESULT"
-            audit_record["error_message"] = str(exc)
-            audit_record["justification"] = f"Exception during Razorpay execution: {str(exc)}"
-            mark_execution_unknown(db, idempotency_key, str(exc))
+
+            elif action == "reminder":
+                audit_record["execution_status"] = "QUEUED_FOR_DELIVERY"
+                audit_record["external_api_called"] = False
+                audit_record["justification"] = (
+                    "Reminder event queued for notification. Actual SMS/Email delivery requires "
+                    "downstream messaging provider integration (Twilio / SendGrid)."
+                )
+
+            else:  # no_action
+                audit_record["execution_status"] = "NO_ACTION"
+                audit_record["external_api_called"] = False
+                audit_record["justification"] = "No recovery action specified by policy."
+
         finally:
             db.close()
-
-    elif action == "retry":
-        audit_record["execution_status"] = "NOT_SUPPORTED"
-        audit_record["external_api_called"] = False
-        audit_record["justification"] = (
-            "Automatic retry requires an existing tokenized card mandate context and is "
-            "truthfully reported as NOT_SUPPORTED rather than creating a fake successful payment."
-        )
-
-    elif action == "reminder":
-        audit_record["execution_status"] = "QUEUED_FOR_DELIVERY"
-        audit_record["external_api_called"] = False
-        audit_record["justification"] = (
-            "Reminder event queued for notification. Actual SMS/Email delivery requires "
-            "downstream messaging provider integration (Twilio / SendGrid)."
-        )
-
-    else: # no_action
-        audit_record["execution_status"] = "NO_ACTION"
-        audit_record["external_api_called"] = False
-        audit_record["justification"] = "No recovery action specified by policy."
 
     return audit_record
 
