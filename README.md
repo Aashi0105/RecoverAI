@@ -161,12 +161,20 @@ Evaluated on the untouched 15% holdout test dataset ($N = 633$ failed payments, 
 | Metric | Industry Baseline ($\tau = 0.50$) | RecoverAI EV-Optimal ($\tau = 0.35$) | Net Business Improvement ($\Delta$) |
 | :--- | :---: | :---: | :---: |
 | **Total Revenue at Risk** | ₹1,579,773.00 | ₹1,579,773.00 | Total evaluatable failed transaction volume |
-| **Interventions Selected** | 361 transactions ($57.0\%$) | **393 transactions ($62.1\%$)** | $+32$ additional recoverable orders captured |
-| **Gross Recovered Revenue** | ₹889,979.57 | **₹920,754.44** | **$+₹30,774.87$ gross revenue uplift** |
-| **Action Costs Incurred** | ₹4,189.00 | **₹4,189.00** | Net zero cost overhead via EV filtering |
+| **Interventions Selected** | 485 transactions ($76.6\%$) | **521 transactions ($82.3\%$)** | $+36$ additional recoverable orders captured |
+| **Gross Recovered Revenue** | ₹889,907.57 | **₹920,754.44** | **$+₹30,846.87$ gross revenue uplift** |
+| **Action Costs Incurred** | ₹4,117.00 | **₹4,189.00** | $+₹72.00$ incremental action cost |
 | **Realized Net Value** | ₹885,790.57 | **₹916,565.44** | **$+₹30,774.87$ net profit gain (+1.95%)** |
 | **Gross Risk Capture Rate** | 56.3% | **58.3%** | **$+2.0\%$ absolute recovery capture** |
 | **Model Calibration** | Logistic Regression | EXP_0 Calibrated Pipeline | Zero post-treatment data leakage |
+
+### 🔬 Causal Treatment Effect Evaluation (`evaluation/causal_lift.py`)
+
+To evaluate recovery intervention impact beyond raw observational correlation, RecoverAI incorporates a **Propensity Score Inverse Probability Weighting (IPW)** causal evaluation engine:
+* **Propensity Score Model**: Logistic Regression estimating treatment assignment probability $P(\text{recovery\_attempted} \mid \mathbf{X})$ on pre-treatment covariates with weights clipped to $[0.01, 0.99]$.
+* **IPW-Adjusted Average Treatment Effect (ATE)**: **+1.31 percentage points** (95% Bootstrap CI: **[-2.50%, +5.56%]** over 1,000 iterations, `seed=42`).
+* **Statistical Significance Assessment**: The 95% bootstrap confidence interval includes zero ($[-2.50\%, +5.56\%]$); therefore, the treatment effect is not statistically distinguishable from zero in this offline synthetic-data benchmark.
+* **Methodological Scope**: This evaluation represents an observational analysis on synthetic historical logs and is **NOT a randomized live A/B experiment**.
 
 ---
 

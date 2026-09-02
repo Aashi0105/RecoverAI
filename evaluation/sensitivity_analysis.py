@@ -2,7 +2,7 @@
 Sensitivity Analysis Module for RecoverAI Business Policy Engine.
 
 Evaluates financial recovery performance under 6 scenario stress tests on the untouched test set (N=633):
-1. BASE CASE: Current assumptions (reproduces ₹64,988.60 exactly).
+1. BASE CASE: Current assumptions (Baseline Net: ₹885,790.57, EV-Optimal Net: ₹916,565.44, Net Uplift: +₹30,774.87, +1.95%).
 2. ACTION COST +50%: 1.5x action cost multiplier.
 3. ACTION COST -50%: 0.5x action cost multiplier.
 4. THRESHOLD +0.05: tau = 0.40 EV threshold.
