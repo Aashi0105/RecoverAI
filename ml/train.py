@@ -15,9 +15,14 @@ Runs end-to-end:
 
 import json
 import os
+import sys
 import joblib
 import numpy as np
 import pandas as pd
+
+PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+if PROJECT_ROOT not in sys.path:
+    sys.path.insert(0, PROJECT_ROOT)
 
 from sklearn.model_selection import train_test_split
 from sklearn.pipeline import Pipeline
@@ -31,7 +36,11 @@ from evaluation.business_metrics import calculate_business_impact, evaluate_deci
 from data.generate_data import generate_pipeline
 
 
-def train_and_evaluate_ml_pipeline(csv_path: str = "data/raw/transactions.csv", seed: int = 42):
+def train_and_evaluate_ml_pipeline(
+    csv_path: str = "data/raw/transactions.csv",
+    seed: int = 42,
+    output_dir: str = "ml/models"
+):
     """
     Main training execution pipeline.
     """
@@ -80,9 +89,10 @@ def train_and_evaluate_ml_pipeline(csv_path: str = "data/raw/transactions.csv", 
     print(f"   - Validation Set : {len(X_val):,} samples (15%)")
     print(f"   - Test Set       : {len(X_test):,} samples (15%)")
 
-    # 4. Define Candidate Models
+    # 4. Define Candidate Models & Production Model Specification
+    PRODUCTION_MODEL_NAME = "LogisticRegression"
     candidates = {
-        "Logistic Regression": LogisticRegression(max_iter=1000, C=1.0, random_state=seed),
+        PRODUCTION_MODEL_NAME: LogisticRegression(max_iter=1000, C=1.0, random_state=seed),
         "Random Forest": RandomForestClassifier(n_estimators=150, max_depth=12, random_state=seed, n_jobs=-1),
         "XGBoost": XGBClassifier(n_estimators=150, learning_rate=0.05, max_depth=4, random_state=seed, eval_metric="logloss")
     }
@@ -116,13 +126,15 @@ def train_and_evaluate_ml_pipeline(csv_path: str = "data/raw/transactions.csv", 
         print(f"{name:<22} | {m['precision']:<10.4f} | {m['recall']:<8.4f} | {m['f1']:<8.4f} | {m['roc_auc']:<8.4f} | {m['pr_auc']:<8.4f} | {m['brier_score']:<8.4f}")
     print("-" * 84)
 
-    # 5. Select Best Model (based on Validation ROC-AUC & Calibration)
-    best_name = max(val_results, key=lambda k: (val_results[k]["roc_auc"], val_results[k]["pr_auc"]))
+    # 5. Deterministic Production Model Selection
+    # Logistic Regression is the fixed production model for reproducible inference and deterministic demo behavior. Alternative models may be evaluated as experiments but are not automatically promoted.
+    best_name = PRODUCTION_MODEL_NAME
     best_pipeline = fitted_pipelines[best_name]
     best_val_metrics = val_results[best_name]
 
-    print(f"\n🏆 Selected Model: {best_name}")
-    print(f"   Reason: Highest combined ROC-AUC ({best_val_metrics['roc_auc']:.4f}) and PR-AUC ({best_val_metrics['pr_auc']:.4f}) on Validation set.")
+    print(f"\n🏆 Selected Production Model: {best_name}")
+    print(f"   Architecture: Calibrated Logistic Regression (C=1.0, max_iter=1000, seed={seed})")
+    print(f"   Validation Metrics: Precision={best_val_metrics['precision']:.4f}, Recall={best_val_metrics['recall']:.4f}, F1={best_val_metrics['f1']:.4f}, ROC-AUC={best_val_metrics['roc_auc']:.4f}, PR-AUC={best_val_metrics['pr_auc']:.4f}, Brier={best_val_metrics['brier_score']:.4f}")
 
     # 6. Evaluate Selected Model ONCE on the untouched Test Set
     print("\n" + "=" * 70)
@@ -195,7 +207,7 @@ def train_and_evaluate_ml_pipeline(csv_path: str = "data/raw/transactions.csv", 
         print(f"  - {plot_name:<20}: {plot_path}")
 
     # 10. Save Final Model Artifact & Metadata
-    model_dir = "ml/models"
+    model_dir = output_dir
     os.makedirs(model_dir, exist_ok=True)
     artifact_path = os.path.join(model_dir, "recovery_model.joblib")
     metadata_path = os.path.join(model_dir, "model_metadata.json")
@@ -209,6 +221,13 @@ def train_and_evaluate_ml_pipeline(csv_path: str = "data/raw/transactions.csv", 
 
     metadata = {
         "selected_model": best_name,
+        "production_model": best_name,
+        "dataset_split": {
+            "train_samples": len(X_train),
+            "validation_samples": len(X_val),
+            "test_samples": len(X_test),
+            "total_failed_samples": total_failed_count
+        },
         "validation_metrics": val_results,
         "test_metrics": test_metrics,
         "top_10_features": sorted_features[:10],

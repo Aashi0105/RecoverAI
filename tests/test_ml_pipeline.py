@@ -19,17 +19,22 @@ from ml.predict import predict_recovery_probability, load_recovery_model
 def setup_dataset_and_model(tmp_path_factory):
     """Fixture to generate synthetic data and train a lightweight model artifact."""
     data_dir = tmp_path_factory.mktemp("data")
+    models_dir = tmp_path_factory.mktemp("models")
     csv_path = os.path.join(data_dir, "transactions.csv")
     
     # Generate 500 rows for fast testing
     df_raw = generate_pipeline(rows=500, seed=42, output_dir=str(data_dir))
-    pipeline, metadata = train_and_evaluate_ml_pipeline(csv_path=csv_path, seed=42)
-    return csv_path, df_raw, pipeline, metadata
+    pipeline, metadata = train_and_evaluate_ml_pipeline(
+        csv_path=csv_path,
+        seed=42,
+        output_dir=str(models_dir)
+    )
+    return csv_path, df_raw, pipeline, metadata, str(models_dir)
 
 
 def test_dataset_loads_and_filters_failed_payments(setup_dataset_and_model):
     """1 & 2: Test dataset loads and filters to failed payments only."""
-    csv_path, df_raw, _, _ = setup_dataset_and_model
+    csv_path, df_raw, *_ = setup_dataset_and_model
     X, y = prepare_features_and_target(df_raw)
     
     failed_count = (df_raw["payment_status"] == "failed").sum()
@@ -39,7 +44,7 @@ def test_dataset_loads_and_filters_failed_payments(setup_dataset_and_model):
 
 def test_target_exists(setup_dataset_and_model):
     """3: Test target 'recovered' exists and is binary."""
-    _, df_raw, _, _ = setup_dataset_and_model
+    _, df_raw, *_ = setup_dataset_and_model
     X, y = prepare_features_and_target(df_raw)
     assert set(y.unique()).issubset({0, 1})
 
@@ -57,7 +62,7 @@ def test_forbidden_target_leakage_audit():
 
 def test_feature_transformation(setup_dataset_and_model):
     """5: Test feature extraction and ColumnTransformer pipeline transformation."""
-    _, df_raw, pipeline, _ = setup_dataset_and_model
+    _, df_raw, pipeline, *_ = setup_dataset_and_model
     X, y = prepare_features_and_target(df_raw)
     
     # Test preprocessor output shape
@@ -70,7 +75,7 @@ def test_feature_transformation(setup_dataset_and_model):
 
 def test_model_training_and_probability_bounds(setup_dataset_and_model):
     """6 & 7: Test candidate models train and predict probabilities between 0 and 1."""
-    _, df_raw, pipeline, _ = setup_dataset_and_model
+    _, df_raw, pipeline, *_ = setup_dataset_and_model
     X, y = prepare_features_and_target(df_raw)
     
     probs = pipeline.predict_proba(X)[:, 1]
@@ -79,7 +84,7 @@ def test_model_training_and_probability_bounds(setup_dataset_and_model):
 
 def test_predict_recovery_probability_single_transaction(setup_dataset_and_model):
     """8: Test probability prediction works on a single transaction dictionary."""
-    _, df_raw, _, _ = setup_dataset_and_model
+    _, df_raw, *_ = setup_dataset_and_model
     failed_row = df_raw[df_raw["payment_status"] == "failed"].iloc[0].to_dict()
     
     # Remove leakage fields from dict
@@ -95,7 +100,7 @@ def test_predict_recovery_probability_single_transaction(setup_dataset_and_model
 
 def test_model_artifact_save_and_reload(setup_dataset_and_model):
     """9 & 10: Test model artifact saves, reloads, and gives identical predictions."""
-    _, df_raw, pipeline, _ = setup_dataset_and_model
+    _, df_raw, pipeline, _, models_dir = setup_dataset_and_model
     failed_row = df_raw[df_raw["payment_status"] == "failed"].iloc[0].to_dict()
     for col in FORBIDDEN_TARGET_LEAKAGE_COLUMNS:
         failed_row.pop(col, None)
@@ -104,8 +109,8 @@ def test_model_artifact_save_and_reload(setup_dataset_and_model):
     df_single = pd.DataFrame([failed_row])[APPROVED_MODEL_FEATURES]
     orig_prob = pipeline.predict_proba(df_single)[0, 1]
 
-    # Reload from disk artifact
-    artifact = load_recovery_model()
+    # Reload from disk artifact in isolated models_dir
+    artifact = joblib.load(os.path.join(models_dir, "recovery_model.joblib"))
     reloaded_pipeline = artifact["pipeline"]
     reloaded_prob = reloaded_pipeline.predict_proba(df_single)[0, 1]
 

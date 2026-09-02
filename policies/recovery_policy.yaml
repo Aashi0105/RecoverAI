@@ -11,8 +11,8 @@ retry:
 
 # Amount Boundaries
 amount_limits:
-  automatic_action_max: 25000.00       # Maximum transaction amount (INR) for automated action
-  human_approval_threshold: 25000.00     # Transactions > ₹25,000 strictly require merchant approval
+  automatic_action_max: 8500.00        # Maximum transaction amount (INR) for automated action
+  human_approval_threshold: 8500.00    # Transactions >= ₹8,500 strictly require merchant approval
 
 # Customer Contact Frequency
 contact:

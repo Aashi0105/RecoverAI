@@ -21,6 +21,7 @@ from agent.nodes.diagnosis import diagnose_failure
 from agent.nodes.recommendation import recommend_action
 from agent.demo_data import build_test_transaction
 from agent.services.llm_service import is_llm_available, DiagnosisOutput, RecommendationOutput
+from backend.config import settings
 
 
 def get_base_test_transaction():
@@ -65,6 +66,7 @@ def test_missing_api_key_defaults_to_heuristic(monkeypatch):
     """Verifies that missing or placeholder API key does not crash and defaults to heuristics."""
     monkeypatch.setenv("LLM_ENABLED", "true")
     monkeypatch.setenv("LLM_API_KEY", "")
+    monkeypatch.setattr(settings, "LLM_API_KEY", "")
 
     assert is_llm_available() is False
 

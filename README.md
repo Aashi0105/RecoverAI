@@ -173,7 +173,8 @@ Evaluated on the untouched 15% holdout test dataset ($N = 633$ failed payments, 
 ## 🧠 The Intelligence Layer
 
 ### 1. ML Recovery Prediction (`ml/predict.py`)
-* **Model Pipeline**: `EXP_0` Baseline Calibrated Logistic Regression pipeline with `StandardScaler` on numerical features and `OneHotEncoder(handle_unknown="ignore")` on categorical attributes.
+* **Model Pipeline**: Calibrated Logistic Regression pipeline with `StandardScaler` on numerical features and `OneHotEncoder(handle_unknown="ignore")` on categorical attributes.
+* **Production Model Architecture**: Logistic Regression is the frozen production model used for deterministic agent inference and calibrated probability estimation, while alternative models (such as Random Forest and XGBoost) are evaluated separately during experimentation and benchmarking.
 * **31 Approved Model Features**: Incorporates transaction amount, temporal features (`hour`, `day_of_week`, `is_weekend`), payment channels (`card`, `upi`, `netbanking`), failure categories, historical customer success rates, previous failure counts (24h/7d), IP risk scores, and velocity signals.
 * **Strict Target Leakage Audit**: Enforces zero post-recovery or target variables (`payment_status`, `recovery_attempt_count`, `customer_contacted_today`) in model inference.
 * **Expected Value Formulation**:
@@ -331,8 +332,9 @@ RecoverAI — AI Revenue Recovery Agent/
 │   │   ├── diagnosis.py        # Node 3: AI failure diagnosis (LLM / Heuristic)
 │   │   ├── recommendation.py   # Node 4: Recovery action recommendation
 │   │   ├── policy.py           # Node 5: Deterministic Policy Guard (ACT / ESCALATE / REFUSE)
-│   │   ├── execution.py        # Node 6: Policy-gated action execution
 │   │   └── verification.py     # Node 7: Settlement & audit logging
+│   ├── tools/
+│   │   └── mock_actions.py     # Node 6: Policy-gated action execution
 │   ├── services/
 │   │   └── llm_service.py      # Structured LLM service with fallback engine
 │   ├── graph.py                # LangGraph StateGraph assembly & conditional routing
