@@ -36,6 +36,7 @@ def create_audit_log(state: AgentState) -> AgentState:
         "policy_decision": state.get("policy_decision"),
         "policy_reason": state.get("policy_reason"),
         "policy_violations": state.get("policy_violations", []),
+        "decision_explanation": state.get("decision_explanation"),
         
         # Execution & Verification
         "selected_action": state.get("selected_action"),

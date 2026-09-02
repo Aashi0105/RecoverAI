@@ -58,6 +58,7 @@ class AgentState(TypedDict, total=False):
     policy_decision: str  # 'APPROVED', 'BLOCKED', 'HUMAN_APPROVAL'
     policy_reason: str
     policy_violations: List[str]
+    decision_explanation: Optional[Dict[str, Any]]
 
     # Execution & Verification Output
     selected_action: Optional[str]

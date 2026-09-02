@@ -164,6 +164,17 @@ def evaluate_transaction_policy(
             f"Automated recovery deliberately refused to prevent unnecessary cost or risk: " + "; ".join(triggered_rules)
         )
 
+    explanation = build_decision_explanation(
+        decision=decision,
+        justification=justification,
+        triggered_rules=triggered_rules,
+        txn_data=txn_data,
+        pred_prob=pred_prob,
+        tau=tau,
+        action_cost=action_cost,
+        rec_action=rec_action
+    )
+
     return {
         "transaction_id": txn_id,
         "timestamp": timestamp,
@@ -177,7 +188,141 @@ def evaluate_transaction_policy(
         "action_cost": round(action_cost, 2),
         "triggered_rules": triggered_rules,
         "justification": justification,
-        "policy_version": policy_version
+        "policy_version": policy_version,
+        "decision_explanation": explanation
+    }
+
+
+def build_decision_explanation(
+    decision: str,
+    justification: str,
+    triggered_rules: List[str],
+    txn_data: Dict[str, Any],
+    pred_prob: float,
+    tau: float,
+    action_cost: float,
+    rec_action: str
+) -> Dict[str, Any]:
+    """
+    Constructs a structured, deterministic explanation of why the policy engine
+    reached its final decision (ACT, ESCALATE, or REFUSE).
+
+    Uses exclusively real evaluated inputs, existing frozen thresholds, and actual
+    triggered rules. Zero fabrication or post-hoc hallucinations.
+    """
+    amount = float(txn_data.get("amount", 0.0)) if txn_data.get("amount") is not None else None
+    reason = str(txn_data.get("failure_reason", "unknown")).lower()
+    category = str(txn_data.get("failure_category", "unknown")).lower()
+    ip_risk = float(txn_data.get("ip_risk_score", 0.0)) if txn_data.get("ip_risk_score") is not None else None
+    velocity = float(txn_data.get("velocity_score", 0.0)) if txn_data.get("velocity_score") is not None else None
+    streak = int(txn_data.get("consecutive_failure_streak", 0)) if txn_data.get("consecutive_failure_streak") is not None else 0
+
+    # 1. Primary Factor Determination (Derived directly from triggered rule or approval)
+    primary_factor = "STANDARD_POLICY_APPROVAL"
+    if decision == "REFUSE":
+        if any("Suspected fraud/risk" in r for r in triggered_rules):
+            primary_factor = "HARD_SAFETY_FRAUD"
+        elif any("Permanent instrument failure" in r for r in triggered_rules):
+            primary_factor = "INSTRUMENT_FAILURE"
+        elif any("Consecutive failure streak" in r for r in triggered_rules):
+            primary_factor = "STREAK_LIMIT_EXCEEDED"
+        elif any("below operational threshold" in r for r in triggered_rules):
+            primary_factor = "PROBABILITY_BELOW_THRESHOLD"
+        else:
+            primary_factor = "SAFETY_POLICY_REFUSAL"
+    elif decision == "ESCALATE":
+        if any("exceeds high-value threshold" in r for r in triggered_rules):
+            primary_factor = "HIGH_VALUE_THRESHOLD"
+        elif any("uncertainty band" in r for r in triggered_rules):
+            primary_factor = "UNCERTAINTY_BAND"
+        elif any("Velocity score" in r for r in triggered_rules):
+            primary_factor = "VELOCITY_RISK"
+        else:
+            primary_factor = "POLICY_ESCALATION"
+
+    # 2. Structured Policy Checks Breakdown
+    # Checks evaluate actual conditions; status must be one of: PASSED, FAILED, ESCALATED, UNKNOWN
+    fraud_failed = bool(category == "risk_related" or reason == "suspected_risk" or (ip_risk is not None and ip_risk > 0.70))
+    instrument_failed = bool(category == "payment_method_problem" or reason in ["invalid_card", "card_expired"])
+    streak_failed = bool(streak >= 4)
+    viability_failed = bool(pred_prob is not None and pred_prob < tau)
+
+    val_escalated = bool(decision == "ESCALATE" and amount is not None and amount >= HIGH_VALUE_TRANSACTION_THRESHOLD)
+    conf_escalated = bool(decision == "ESCALATE" and pred_prob is not None and UNCERTAINTY_BAND_LOW <= pred_prob <= UNCERTAINTY_BAND_HIGH)
+    vel_escalated = bool(decision == "ESCALATE" and velocity is not None and ip_risk is not None and velocity > 0.65 and ip_risk > 0.50)
+
+    policy_checks = {
+        "fraud_risk": "FAILED" if fraud_failed else "PASSED",
+        "instrument_status": "FAILED" if instrument_failed else "PASSED",
+        "failure_streak": "FAILED" if streak_failed else "PASSED",
+        "recovery_viability": "FAILED" if viability_failed else "PASSED",
+        "value_threshold": "ESCALATED" if val_escalated else "PASSED",
+        "confidence_band": "ESCALATED" if conf_escalated else "PASSED",
+        "velocity_risk": "ESCALATED" if vel_escalated else "PASSED"
+    }
+
+    # 3. Deterministic Reasons Composition
+    reasons: List[str] = []
+    if decision == "ACT":
+        if pred_prob is not None:
+            reasons.append(f"Predicted recovery probability ({pred_prob:.1%}) meets or exceeds operational threshold (τ = {tau:.2f}).")
+        reasons.append(f"Failure categorized as transient ({category}) with no permanent instrument defect.")
+        reasons.append(f"Consecutive failure streak ({streak}) is within safe retry limit (< 4).")
+        if amount is not None:
+            reasons.append(f"Transaction amount (₹{amount:,.2f}) is within autonomous execution boundary (< ₹{HIGH_VALUE_TRANSACTION_THRESHOLD:,.2f}).")
+        reasons.append("Zero safety policy violations detected.")
+    elif decision == "REFUSE":
+        for rule in triggered_rules:
+            if "Suspected fraud/risk" in rule:
+                risk_str = f"{ip_risk:.2f}" if ip_risk is not None else "N/A"
+                reasons.append(f"High risk score detected (reason='{reason}', IP risk={risk_str} > 0.70). Recovery blocked to prevent fraud.")
+            elif "Permanent instrument failure" in rule:
+                reasons.append(f"Permanent payment instrument failure (reason='{reason}'). Retrying will not succeed.")
+            elif "Consecutive failure streak" in rule:
+                reasons.append(f"Consecutive failure streak limit reached ({streak} >= 4). Automatic retries halted to prevent fee churn.")
+            elif "below operational threshold" in rule:
+                prob_str = f"{pred_prob:.1%}" if pred_prob is not None else "N/A"
+                reasons.append(f"Recovery probability ({prob_str}) is below operational viability threshold (τ = {tau:.2f}). Expected recovery value does not justify action cost.")
+            else:
+                reasons.append(rule)
+        if not reasons:
+            reasons.append("Deliberately refused by safety guardrails to prevent unnecessary cost or risk.")
+    else:  # ESCALATE
+        for rule in triggered_rules:
+            if "Amount" in rule and "high-value" in rule:
+                amt_str = f"₹{amount:,.2f}" if amount is not None else "N/A"
+                reasons.append(f"Transaction amount ({amt_str}) exceeds autonomous limit (₹{HIGH_VALUE_TRANSACTION_THRESHOLD:,.2f}). Human merchant review required.")
+            elif "uncertainty band" in rule:
+                prob_str = f"{pred_prob:.1%}" if pred_prob is not None else "N/A"
+                reasons.append(f"Recovery probability ({prob_str}) falls in boundary uncertainty band [{UNCERTAINTY_BAND_LOW:.2f}, {UNCERTAINTY_BAND_HIGH:.2f}]. Model confidence requires human sign-off.")
+            elif "Velocity score" in rule:
+                vel_str = f"{velocity:.2f}" if velocity is not None else "N/A"
+                risk_str = f"{ip_risk:.2f}" if ip_risk is not None else "N/A"
+                reasons.append(f"Elevated velocity score ({vel_str}) and IP risk ({risk_str}) require human review before action.")
+            else:
+                reasons.append(rule)
+        if not reasons:
+            reasons.append("Escalated to Merchant Review Queue for human approval.")
+
+    # 4. Metrics Evaluated
+    metrics_evaluated = {
+        "recovery_probability": round(float(pred_prob), 4) if pred_prob is not None else None,
+        "operational_threshold_tau": round(float(tau), 4) if tau is not None else None,
+        "transaction_amount": round(float(amount), 2) if amount is not None else None,
+        "high_value_limit": round(float(HIGH_VALUE_TRANSACTION_THRESHOLD), 2),
+        "consecutive_failure_streak": int(streak) if streak is not None else None,
+        "streak_limit": 4,
+        "ip_risk_score": round(float(ip_risk), 4) if ip_risk is not None else None,
+        "ip_risk_limit": 0.70
+    }
+
+    return {
+        "decision": decision,
+        "summary": justification,
+        "primary_factor": primary_factor,
+        "reasons": reasons,
+        "policy_checks": policy_checks,
+        "metrics_evaluated": metrics_evaluated
     }
 
 
@@ -196,13 +341,13 @@ def policy_guard(state: AgentState) -> AgentState:
         "consecutive_failure_streak": state.get("customer_context", {}).get("consecutive_failure_streak", state.get("consecutive_failure_streak", 0))
     }
 
-
     pred_prob = state.get("recovery_probability", 0.0)
     policy_eval = evaluate_transaction_policy(txn_data, pred_prob)
 
     state["policy_decision"] = policy_eval["decision"]
     state["policy_reason"] = policy_eval["justification"]
     state["policy_violations"] = policy_eval["triggered_rules"]
+    state["decision_explanation"] = policy_eval.get("decision_explanation")
     state["selected_action"] = policy_eval["recommended_action"] if policy_eval["decision"] == "ACT" else None
     
     if policy_eval["decision"] == "ACT":

@@ -114,6 +114,7 @@ def run_agent(transaction: Dict[str, Any]) -> Dict[str, Any]:
         "policy_decision": final_state.get("policy_decision"),
         "policy_reason": final_state.get("policy_reason"),
         "policy_violations": final_state.get("policy_violations", []),
+        "decision_explanation": final_state.get("decision_explanation"),
         "selected_action": final_state.get("selected_action"),
         "action_status": final_state.get("action_result", {}).get("status", "not_executed"),
         "action_reference": final_state.get("action_result", {}).get("reference_id"),

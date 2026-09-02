@@ -512,7 +512,64 @@ def render_agent_decision_timeline(result: Dict[str, Any]) -> None:
         s6_content = "Autonomous recovery deliberately refused to protect merchant from chargebacks or spare action fee burn."
         s6_meta = "<span>Actions Executed: <code>0</code></span><span>Action Cost Avoided: <code>Spared</code></span>"
 
-    # 3. Assemble 7 stages
+    # 3. Build structured explanation breakdown for Stage 5 if available
+    explanation_html = ""
+    exp = result.get("decision_explanation")
+    if exp and isinstance(exp, dict):
+        p_factor = exp.get("primary_factor", "UNKNOWN")
+        checks = exp.get("policy_checks", {})
+        reasons_list = exp.get("reasons", [])
+
+        check_labels = {
+            "fraud_risk": "Fraud Risk",
+            "instrument_status": "Instrument Status",
+            "failure_streak": "Failure Streak",
+            "recovery_viability": "Recovery Viability (P ≥ τ)",
+            "value_threshold": "Value Limit",
+            "confidence_band": "Confidence Band",
+            "velocity_risk": "Velocity Risk"
+        }
+        check_pills = []
+        for k, v in checks.items():
+            label = check_labels.get(k, k.replace("_", " ").title())
+            if v == "PASSED":
+                c_pill = f'<span class="timeline-pill pill-completed" style="margin-right:6px; margin-bottom:4px;">{label}: PASSED</span>'
+            elif v == "FAILED":
+                c_pill = f'<span class="timeline-pill pill-blocked" style="margin-right:6px; margin-bottom:4px;">{label}: FAILED</span>'
+            elif v == "ESCALATED":
+                c_pill = f'<span class="timeline-pill pill-escalated" style="margin-right:6px; margin-bottom:4px;">{label}: ESCALATED</span>'
+            else:
+                c_pill = f'<span class="timeline-pill" style="margin-right:6px; margin-bottom:4px; background:#334155; color:#94a3b8;">{label}: {v}</span>'
+            check_pills.append(c_pill)
+
+        pills_str = "".join(check_pills)
+        reasons_html = "".join([f"<li>{r}</li>" for r in reasons_list])
+        is_open = "open" if decision != "ACT" else ""
+
+        explanation_html = f"""
+        <details style="margin-top:10px; background:#0b1329; border:1px solid #1e293b; border-radius:6px; padding:8px 12px;" {is_open}>
+            <summary style="font-size:0.82rem; font-weight:700; color:#38bdf8; cursor:pointer;">
+                🛡️ Structured Decision Explanation & Policy Checks Breakdown
+            </summary>
+            <div style="margin-top:8px; font-size:0.82rem; color:#cbd5e1;">
+                <div style="margin-bottom:6px;">
+                    <span style="color:#94a3b8;">Primary Decision Factor:</span> <code>{p_factor}</code>
+                </div>
+                <div style="margin-bottom:8px;">
+                    <span style="color:#94a3b8;">Policy Checks:</span><br/>
+                    <div style="margin-top:4px; display:flex; flex-wrap:wrap;">{pills_str}</div>
+                </div>
+                <div>
+                    <span style="color:#94a3b8;">Evaluated Reasons:</span>
+                    <ul style="margin:4px 0 0 16px; padding:0; line-height:1.4;">
+                        {reasons_html}
+                    </ul>
+                </div>
+            </div>
+        </details>
+        """
+
+    # 4. Assemble 7 stages
     stages = [
         {
             "num": 1,
@@ -556,7 +613,7 @@ def render_agent_decision_timeline(result: Dict[str, Any]) -> None:
             "icon": "🛡️",
             "class": s5_class,
             "pill": s5_pill,
-            "content": policy_reason,
+            "content": policy_reason + explanation_html,
             "meta": f"<span>Policy Decision: <b>{decision}</b></span><span>Authority: <code>Deterministic Rules (YAML)</code></span>" + (f"<span>Violations: <code>{len(policy_violations)}</code></span>" if policy_violations else "")
         },
         {
