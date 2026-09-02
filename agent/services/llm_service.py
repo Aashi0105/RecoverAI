@@ -14,6 +14,7 @@ from pydantic import BaseModel, Field, field_validator
 import httpx
 
 from backend.config import settings
+from agent.services.pii_redaction import redact_pii_from_context
 
 logger = logging.getLogger(__name__)
 
@@ -142,7 +143,8 @@ def generate_llm_diagnosis(context: Dict[str, Any]) -> Optional[DiagnosisOutput]
         "Do NOT include chain-of-thought or hidden reasoning. Return strictly valid JSON."
     )
 
-    user_prompt = f"Payment failure context:\n{json.dumps(context, indent=2)}"
+    safe_context = redact_pii_from_context(context)
+    user_prompt = f"Payment failure context:\n{json.dumps(safe_context, indent=2)}"
     messages = [
         {"role": "system", "content": system_prompt},
         {"role": "user", "content": user_prompt}
@@ -186,7 +188,8 @@ def generate_llm_recommendation(context: Dict[str, Any]) -> Optional[Recommendat
         "Do NOT include private chain-of-thought. Return strictly valid JSON."
     )
 
-    user_prompt = f"Recovery context:\n{json.dumps(context, indent=2)}"
+    safe_context = redact_pii_from_context(context)
+    user_prompt = f"Recovery context:\n{json.dumps(safe_context, indent=2)}"
     messages = [
         {"role": "system", "content": system_prompt},
         {"role": "user", "content": user_prompt}
