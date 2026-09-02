@@ -20,6 +20,7 @@ import uuid
 import pandas as pd
 import numpy as np
 import streamlit as st
+from typing import Dict, Any, Optional, List
 
 # Ensure project root is in sys.path
 PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
@@ -264,6 +265,91 @@ st.markdown("""
         border-color: #38bdf8;
         background: #0f233f;
     }
+
+    /* Agent Decision Timeline Styles */
+    .timeline-container {
+        margin-top: 14px;
+        margin-bottom: 18px;
+        background: #0f172a;
+        border: 1px solid #1e293b;
+        border-radius: 10px;
+        padding: 16px 18px;
+    }
+    .timeline-card {
+        background-color: #131c2e;
+        border: 1px solid #1e293b;
+        border-radius: 8px;
+        padding: 12px 16px;
+        margin-bottom: 8px;
+        transition: border-color 0.15s ease;
+    }
+    .timeline-card:hover {
+        border-color: #38bdf8;
+    }
+    .timeline-card-completed {
+        border-left: 4px solid #10b981;
+    }
+    .timeline-card-escalated {
+        border-left: 4px solid #f59e0b;
+    }
+    .timeline-card-blocked {
+        border-left: 4px solid #ef4444;
+    }
+    .timeline-pill {
+        display: inline-block;
+        font-size: 0.72rem;
+        font-weight: 700;
+        padding: 2px 8px;
+        border-radius: 4px;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+    }
+    .pill-completed {
+        background: rgba(16, 185, 129, 0.15);
+        color: #34d399;
+        border: 1px solid rgba(16, 185, 129, 0.3);
+    }
+    .pill-escalated {
+        background: rgba(245, 158, 11, 0.15);
+        color: #fbbf24;
+        border: 1px solid rgba(245, 158, 11, 0.3);
+    }
+    .pill-blocked {
+        background: rgba(239, 68, 68, 0.15);
+        color: #f87171;
+        border: 1px solid rgba(239, 68, 68, 0.3);
+    }
+    .timeline-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+    .timeline-title {
+        font-weight: 700;
+        font-size: 0.92rem;
+        color: #f8fafc;
+    }
+    .timeline-stage-num {
+        color: #94a3b8;
+        font-size: 0.75rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        margin-right: 6px;
+    }
+    .timeline-content {
+        margin-top: 5px;
+        font-size: 0.85rem;
+        color: #cbd5e1;
+        line-height: 1.4;
+    }
+    .timeline-meta {
+        margin-top: 6px;
+        font-size: 0.78rem;
+        color: #94a3b8;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 14px;
+    }
 </style>
 """, unsafe_allow_html=True)
 
@@ -355,6 +441,160 @@ def compute_live_top_metrics(model_mtime: float, csv_mtime: float):
         "recovery_rate_pct": recovery_rate_pct,
         "payments_selected": opt_selected
     }
+
+
+def render_agent_decision_timeline(result: Dict[str, Any]) -> None:
+    """
+    Renders an interactive, visual Agent Decision Timeline illustrating
+    the 7-stage lifecycle of an autonomous payment recovery decision.
+    """
+    if not result:
+        return
+
+    st.markdown("#### ⏱️ Agent Decision Timeline")
+    st.caption("Visual end-to-end lifecycle trace of RecoverAI's autonomous recovery decision pipeline.")
+
+    # 1. Dynamic Extraction from actual agent result
+    txn_id = result.get("transaction_id", "Unknown")
+    amount = result.get("amount", 0.0)
+    currency = result.get("currency", "INR")
+    failure_reason = result.get("failure_reason", "unknown")
+    failure_category = result.get("failure_category", "unknown")
+
+    prob = result.get("recovery_probability")
+    prob_str = f"{prob * 100:.1f}%" if prob is not None else "Not available"
+    ev = result.get("expected_recovery_value")
+    ev_str = f"₹{ev:,.2f}" if ev is not None else "Not available"
+
+    diagnosis = result.get("diagnosis") or "Failure pattern analyzed."
+    diag_source = result.get("diagnosis_source", "heuristic")
+    diag_badge = "🧠 LLM Reasoning" if diag_source == "llm" else "⚙️ Heuristic Fallback"
+
+    rec_action = (result.get("recommended_action") or "no_action").upper()
+    rec_source = result.get("recommendation_source", "heuristic")
+    rec_badge = "🧠 LLM Strategy" if rec_source == "llm" else "⚙️ Heuristic Fallback"
+    rec_factors = result.get("recommendation_factors", [])
+    rec_factors_str = ", ".join(rec_factors) if rec_factors else "Not available"
+
+    decision = result.get("policy_decision", "REFUSE")
+    policy_reason = result.get("policy_reason", "Evaluated against recovery policy rules.")
+    policy_violations = result.get("policy_violations", [])
+
+    action_status = str(result.get("action_status", "not_executed")).upper()
+    selected_action = (result.get("selected_action") or rec_action).upper()
+    action_ref = result.get("action_reference") or "Not available"
+
+    audit_event = result.get("audit_event") or {}
+    audit_ts = audit_event.get("timestamp", "Recorded")
+    agent_status = result.get("agent_status", "COMPLETED")
+    customer_id = audit_event.get("customer_id") or "Not available"
+
+    # 2. Status & content logic for stages 5 and 6
+    if decision == "ACT":
+        s5_class = "timeline-card-completed"
+        s5_pill = '<span class="timeline-pill pill-completed">✓ Approved (ACT)</span>'
+        s6_class = "timeline-card-completed"
+        s6_pill = f'<span class="timeline-pill pill-completed">✓ Executed ({action_status})</span>'
+        s6_content = f"Autonomous recovery action <b>{selected_action}</b> executed safely in Test Mode / Dry Run."
+        s6_meta = f"<span>Action: <code>{selected_action}</code></span><span>Ref: <code>{action_ref}</code></span><span>Mode: <code>Dry Run</code></span>"
+    elif decision == "ESCALATE":
+        s5_class = "timeline-card-escalated"
+        s5_pill = '<span class="timeline-pill pill-escalated">⚠ Escalated (ESCALATE)</span>'
+        s6_class = "timeline-card-escalated"
+        s6_pill = '<span class="timeline-pill pill-escalated">⏳ Pending Approval</span>'
+        s6_content = "Automated execution safely halted. Transaction queued for Merchant Human-in-the-Loop review."
+        s6_meta = "<span>Queue: <code>Merchant Approval Queue</code></span><span>Status: <code>PENDING_APPROVAL</code></span>"
+    else:  # REFUSE
+        s5_class = "timeline-card-blocked"
+        s5_pill = '<span class="timeline-pill pill-blocked">🛑 Blocked (REFUSE)</span>'
+        s6_class = "timeline-card-blocked"
+        s6_pill = '<span class="timeline-pill pill-blocked">🛑 Action Refused</span>'
+        s6_content = "Autonomous recovery deliberately refused to protect merchant from chargebacks or spare action fee burn."
+        s6_meta = "<span>Actions Executed: <code>0</code></span><span>Action Cost Avoided: <code>Spared</code></span>"
+
+    # 3. Assemble 7 stages
+    stages = [
+        {
+            "num": 1,
+            "title": "Context Loaded",
+            "icon": "📥",
+            "class": "timeline-card-completed",
+            "pill": '<span class="timeline-pill pill-completed">✓ Completed</span>',
+            "content": f"Ingested payment failure telemetry for transaction <code>{txn_id}</code>.",
+            "meta": f"<span>Customer: <code>{customer_id}</code></span><span>Amount: <b>₹{amount:,.2f} {currency}</b></span><span>Reason: <code>{failure_reason}</code></span>"
+        },
+        {
+            "num": 2,
+            "title": "ML Recovery Prediction",
+            "icon": "📊",
+            "class": "timeline-card-completed",
+            "pill": '<span class="timeline-pill pill-completed">✓ Completed</span>',
+            "content": f"Calibrated recovery probability estimated at <b>{prob_str}</b> (Expected Value: <b>{ev_str}</b>).",
+            "meta": "<span>Model: <code>EXP_0 Logistic Regression</code></span><span>Cutoff Threshold: <code>&tau; = 0.35</code></span>"
+        },
+        {
+            "num": 3,
+            "title": "Failure Diagnosis",
+            "icon": "🔍",
+            "class": "timeline-card-completed",
+            "pill": f'<span class="timeline-pill pill-completed">✓ Completed</span> &nbsp;<span class="badge-llm">{diag_badge}</span>' if diag_source == "llm" else f'<span class="timeline-pill pill-completed">✓ Completed</span> &nbsp;<span class="badge-heuristic">{diag_badge}</span>',
+            "content": diagnosis,
+            "meta": f"<span>Category: <code>{failure_category}</code></span><span>Diagnosis Source: <code>{diag_source.upper()}</code></span>"
+        },
+        {
+            "num": 4,
+            "title": "AI Strategy Recommendation",
+            "icon": "💡",
+            "class": "timeline-card-completed",
+            "pill": f'<span class="timeline-pill pill-completed">✓ Completed</span> &nbsp;<span class="badge-llm">{rec_badge}</span>' if rec_source == "llm" else f'<span class="timeline-pill pill-completed">✓ Completed</span> &nbsp;<span class="badge-heuristic">{rec_badge}</span>',
+            "content": f"Proposed recovery strategy: <b>{rec_action}</b>.",
+            "meta": f"<span>Factors: <code>{rec_factors_str}</code></span><span>Strategy Source: <code>{rec_source.upper()}</code></span>"
+        },
+        {
+            "num": 5,
+            "title": "Deterministic Policy Guard",
+            "icon": "🛡️",
+            "class": s5_class,
+            "pill": s5_pill,
+            "content": policy_reason,
+            "meta": f"<span>Policy Decision: <b>{decision}</b></span><span>Authority: <code>Deterministic Rules (YAML)</code></span>" + (f"<span>Violations: <code>{len(policy_violations)}</code></span>" if policy_violations else "")
+        },
+        {
+            "num": 6,
+            "title": "Controlled Execution",
+            "icon": "⚡" if decision == "ACT" else ("👤" if decision == "ESCALATE" else "🛑"),
+            "class": s6_class,
+            "pill": s6_pill,
+            "content": s6_content,
+            "meta": s6_meta
+        },
+        {
+            "num": 7,
+            "title": "Audit Logging & State Persistence",
+            "icon": "📋",
+            "class": "timeline-card-completed",
+            "pill": '<span class="timeline-pill pill-completed">✓ Completed</span>',
+            "content": "Full decision chain atomically recorded in database (<code>AuditLog</code> table).",
+            "meta": f"<span>Agent Status: <code>{agent_status}</code></span><span>Timestamp: <code>{audit_ts[:19] if len(audit_ts)>=19 else audit_ts}</code></span>"
+        }
+    ]
+
+    st.markdown('<div class="timeline-container">', unsafe_allow_html=True)
+    for stage in stages:
+        st.markdown(f"""
+        <div class="timeline-card {stage['class']}">
+            <div class="timeline-header">
+                <div>
+                    <span class="timeline-stage-num">Stage {stage['num']}</span>
+                    <span class="timeline-title">{stage['icon']} {stage['title']}</span>
+                </div>
+                <div>{stage['pill']}</div>
+            </div>
+            <div class="timeline-content">{stage['content']}</div>
+            <div class="timeline-meta">{stage['meta']}</div>
+        </div>
+        """, unsafe_allow_html=True)
+    st.markdown('</div>', unsafe_allow_html=True)
 
 
 test_df, idx_dev, idx_test = load_and_split_dataset(csv_mtime=csv_mtime)
@@ -947,10 +1187,16 @@ with tab_sim:
         </div>
         """, unsafe_allow_html=True)
 
+        # Render visual Agent Decision Timeline below simulation outcome
+        render_agent_decision_timeline(res)
+
         if act_decision == "ESCALATE":
             st.info("👉 **Action Required:** Transaction has been routed to **👤 Merchant Approval Queue**. Switch to Tab 4 to review, approve, or reject.")
         else:
-            st.info("👉 Switch to **🤖 Live Agent Decision Trace** (Tab 3) to view the 7-stage step-by-step reasoning breakdown.")
+            st.info("👉 Switch to **🤖 Live Agent Decision Trace** (Tab 3) to view the deep JSON telemetry breakdown.")
+    elif st.session_state.get("latest_result"):
+        # Display existing simulation result and timeline if already processed in session
+        render_agent_decision_timeline(st.session_state["latest_result"])
 
 
 # =============================================================================
@@ -986,6 +1232,12 @@ with tab_trace:
             </div>
         </div>
         """, unsafe_allow_html=True)
+
+        # Agent Decision Timeline at top of Tab 3
+        render_agent_decision_timeline(res)
+
+        st.markdown("---")
+        st.markdown("#### 🔬 Detailed Telemetry & Step Breakdown")
 
         # 7-STAGE PIPELINE CARDS
         for step in timeline:
