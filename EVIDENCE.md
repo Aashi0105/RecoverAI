@@ -32,7 +32,7 @@ The goal of this record is to maintain strict scientific and technical honesty b
 | **PSI Feature Drift Detection** | 10 quantile binning feature drift monitoring against frozen baseline snapshot ($N=3,581$). | [monitoring/drift_detection.py](file:///c:/Users/Aashi/OneDrive/Desktop/RecoverAI%20%E2%80%94%20AI%20Revenue%20Recovery%20Agent/monitoring/drift_detection.py), [monitoring/baseline_snapshot.json](file:///c:/Users/Aashi/OneDrive/Desktop/RecoverAI%20%E2%80%94%20AI%20Revenue%20Recovery%20Agent/monitoring/baseline_snapshot.json) | **VERIFIED** | `pytest tests/test_drift_detection.py -v` | Appends structured audit events to `logs/drift_audit.jsonl` (`persist=False` in dashboard UI). |
 | **Razorpay Test Mode Integration** | SDK integration using `razorpay.Client` creating Test Mode Payment Links (`rzp_test_...`). | [payment/razorpay_client.py](file:///c:/Users/Aashi/OneDrive/Desktop/RecoverAI%20%E2%80%94%20AI%20Revenue%20Recovery%20Agent/payment/razorpay_client.py), [payment/executor.py](file:///c:/Users/Aashi/OneDrive/Desktop/RecoverAI%20%E2%80%94%20AI%20Revenue%20Recovery%20Agent/payment/executor.py) | **VERIFIED (TEST MODE ONLY)** | `pytest tests/test_razorpay.py -v` | Key prefix validation enforced. Default `dry_run=True` flag prevents network calls unless toggled. |
 | **Streamlit Interactive Dashboard** | Live Web Decision Center with top metric cards, demo buttons, Plotly charts, and drift expander. | [frontend/app.py](file:///c:/Users/Aashi/OneDrive/Desktop/RecoverAI%20%E2%80%94%20AI%20Revenue%20Recovery%20Agent/frontend/app.py) | **MANUAL VERIFICATION** | `streamlit run frontend/app.py` | Runs locally on `http://localhost:8501` without tracebacks or Streamlit error boxes. |
-| **Automated Test Suite** | 143 automated Pytest test cases across 13 test suites, including 10,000 property-tested boundary iterations. | [tests/](file:///c:/Users/Aashi/OneDrive/Desktop/RecoverAI%20%E2%80%94%20AI%20Revenue%20Recovery%20Agent/tests) | **VERIFIED** | `pytest tests/ -v` | 143 tests collected and passed (100% pass rate, 41 non-blocking warnings) in ~2 minutes 40 seconds. |
+| **Automated Test Suite** | 157 automated Pytest test cases across 21 test files, including 10,000 property-tested boundary iterations. | [tests/](file:///c:/Users/Aashi/OneDrive/Desktop/RecoverAI%20%E2%80%94%20AI%20Revenue%20Recovery%20Agent/tests) | **VERIFIED** | `pytest tests/ -v` | 157 tests collected and passed (100% pass rate, 41 non-blocking warnings) in ~3.5 minutes. |
 
 ---
 
@@ -99,19 +99,19 @@ RecoverAI uses a **Decoupled Modular Monolith** architecture:
 
 ## 5. Offline Business Evaluation
 
-Calculated on the untouched held-out test set ($N=633$ failed payments, Total Revenue at Risk = ₹1,500,342.08, `seed=42`):
+Calculated on the untouched held-out test set ($N=633$ failed payments, Total Revenue at Risk = ₹1,579,773.01, `seed=42`):
 
 ### A. Core Policy Performance Comparison
 
 | Evaluation Metric | Default Policy ($\tau = 0.50$) | EV-Optimized Policy ($\tau = 0.35$) | Absolute Delta ($\Delta$) |
 | :--- | :---: | :---: | :---: |
-| **Interventions Selected** | 498 transactions | **522 transactions** | $+24$ transactions |
-| **Intervention Coverage Rate** | 78.67% | **82.46%** | $+3.79\%$ coverage |
-| **Realized Recovered Revenue** | ₹986,026.63 | **₹1,008,097.35** | **$+\text{₹}22,070.72$ gross uplift (+1.47%)** |
-| **Action Costs Incurred** | ₹4,096.00 | **₹4,144.00** | $+\text{₹}48.00$ cost investment |
-| **Realized Net Value** | ₹981,930.63 | **₹1,003,953.35** | **$+\text{₹}22,022.72$ true net uplift (+1.47%)** |
-| **% Revenue at Risk Captured** | 65.72% | **67.19%** | **$+1.47\%$ total risk captured** |
-| **Recoverable Payment Recall** | 91.90% | **94.91%** | **$+3.01\%$ recoveries saved** |
+| **Interventions Selected** | 485 transactions | **521 transactions** | $+36$ transactions |
+| **Intervention Coverage Rate** | 76.62% | **82.31%** | $+5.69\%$ coverage |
+| **Realized Recovered Revenue** | ₹889,907.57 | **₹920,754.44** | **$+\text{₹}30,846.87$ gross uplift** |
+| **Action Costs Incurred** | ₹4,117.00 | **₹4,189.00** | $+\text{₹}72.00$ cost investment |
+| **Realized Net Value** | ₹885,790.57 | **₹916,565.44** | **$+\text{₹}30,774.87$ true net uplift (+1.95%)** |
+| **% Revenue at Risk Captured** | 56.33% | **58.28%** | **$+1.95\%$ total risk captured** |
+| **Recoverable Payment Recall** | 88.83% | **94.03%** | **$+5.19\%$ recoveries saved** |
 
 ### B. 6-Scenario Financial Sensitivity Analysis Grid
 
@@ -119,12 +119,12 @@ Verified via `evaluation/sensitivity_analysis.py` across 6 stress scenarios:
 
 | Scenario | Cost Multiplier | Threshold / Prob Shift | Realized Gross Uplift | True Net Uplift (₹) | True Net Uplift (%) | Status |
 | :--- | :---: | :---: | :---: | :---: | :---: | :---: |
-| **1. BASE CASE** | 1.0x | $\tau = 0.35, \Delta P = 0.00$ | +₹22,070.72 | **+₹22,022.72** | **+1.47%** | **Baseline** |
-| **2. ACTION COST +50%** | 1.5x | $\tau = 0.35, \Delta P = 0.00$ | +₹22,070.72 | **+₹21,998.72** | **+1.47%** | **Robust** |
-| **3. ACTION COST -50%** | 0.5x | $\tau = 0.35, \Delta P = 0.00$ | +₹22,070.72 | **+₹22,046.72** | **+1.47%** | **Robust** |
-| **4. THRESHOLD +0.05** | 1.0x | $\tau = 0.40, \Delta P = 0.00$ | +₹22,070.72 | **+₹22,022.72** | **+1.47%** | **Robust** |
-| **5. THRESHOLD -0.05** | 1.0x | $\tau = 0.30, \Delta P = 0.00$ | +₹22,070.72 | **+₹22,022.72** | **+1.47%** | **Robust** |
-| **6. PROBABILITY MISCALIBRATION** | 1.0x | $\tau = 0.35, \Delta P = -0.05$ | +₹38,813.32 | **+₹38,765.32** | **+2.58%** | **Robust** |
+| **1. BASE CASE** | 1.0x | $\tau = 0.35, \Delta P = 0.00$ | +₹30,846.87 | **+₹30,774.87** | **+1.95%** | **Baseline** |
+| **2. ACTION COST +50%** | 1.5x | $\tau = 0.35, \Delta P = 0.00$ | +₹30,846.87 | **+₹30,738.87** | **+1.95%** | **Robust** |
+| **3. ACTION COST -50%** | 0.5x | $\tau = 0.35, \Delta P = 0.00$ | +₹30,846.87 | **+₹30,810.87** | **+1.95%** | **Robust** |
+| **4. THRESHOLD +0.05** | 1.0x | $\tau = 0.40, \Delta P = 0.00$ | +₹30,846.87 | **+₹30,774.87** | **+1.95%** | **Robust** |
+| **5. THRESHOLD -0.05** | 1.0x | $\tau = 0.30, \Delta P = 0.00$ | +₹30,846.87 | **+₹30,774.87** | **+1.95%** | **Robust** |
+| **6. PROBABILITY MISCALIBRATION** | 1.0x | $\tau = 0.35, \Delta P = -0.05$ | +₹42,966.73 | **+₹42,876.73** | **+2.71%** | **Robust** |
 
 
 ### C. Causal Treatment Effect (IPW) Evaluation
@@ -189,7 +189,7 @@ Implemented in [agent/nodes/policy.py](file:///c:/Users/Aashi/OneDrive/Desktop/R
 All commands are valid and runnable from the repository root:
 
 ```bash
-# 1. Run Complete 143-Test Pytest Suite
+# 1. Run Complete 157-Test Pytest Suite
 pytest tests/ -v
 
 # 2. Launch Streamlit Operations Dashboard
@@ -205,7 +205,7 @@ uvicorn backend.main:app --reload --port 8000
 
 * **Date**: 2026-09-02
 * **Command**: `pytest tests/ -v`
-* **Result**: 143 passed, 0 failed (100% pass rate)
+* **Result**: 157 passed, 0 failed (100% pass rate)
 * **Warnings**: 41 (non-blocking framework deprecation warnings)
-* **Duration**: 160.81 seconds (~2m 40s)
+* **Duration**: 214.28 seconds (~3m 34s)
 * **Status**: Completed successfully with all test suites green.

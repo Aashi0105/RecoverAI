@@ -188,6 +188,20 @@ To evaluate recovery intervention impact beyond raw observational correlation, R
 * **Expected Value Formulation**:
   $$\text{EV} = P(\text{recovery}) \times \text{Amount} - \text{Action Cost}$$
 
+#### Model Artifacts and Runtime Usage
+RecoverAI maintains two serialized model artifacts to separate live agent inference from baseline economic benchmarking:
+* **Primary Production Runtime Model (`ml/models/recovery_model.joblib`)**:
+  - **Architecture**: Calibrated Logistic Regression pipeline with `ColumnTransformer` (preprocessor + classifier).
+  - **Feature Count**: **31 approved features** (amount, customer success rate, streaks, IP risk, velocity, channel, failure telemetry).
+  - **Loaded By**: `ml/predict.py:load_recovery_model()` via `predict_recovery_probability()`.
+  - **Runtime Role**: Primary inference model powering the LangGraph agent (`agent/nodes/prediction.py`), backend REST API endpoints (`/api/v1/recovery`, `/api/v1/demo`), and the interactive Streamlit Command Center (Tab 2 Simulator & Tab 3 Decision Trace).
+* **Reference Baseline Model (`ml/models/experiments/exp_0_baseline.joblib`)**:
+  - **Architecture**: Frozen 5-feature baseline Logistic Regression pipeline.
+  - **Feature Count**: **5 basic features** (`amount`, `hour`, `day_of_week`, `payment_method`, `failure_reason`).
+  - **Loaded By**: `agent/orchestrator.py` and `evaluation/business_metrics.py`.
+  - **Runtime Role**: Serves as the frozen empirical reference baseline for offline Expected Value threshold optimization curves (`evaluation/business_metrics.py`), stress testing (`evaluation/sensitivity_analysis.py`), and the top-level macro KPI benchmark card in Streamlit (Tab 1).
+* **Why Both Artifacts Exist**: Separating the reference benchmark from production inference ensures that offline economic comparisons (proving the $+₹30,774.87$ uplift over the industry naive 0.50 threshold) remain reproducible and uncoupled from production agent runtime feature expansions.
+
 ### 2. Dual-Mode AI Diagnosis & Recommendation (`agent/services/llm_service.py`)
 * **Mode 1 (LLM Intelligence)**: When configured with `LLM_ENABLED=true` and a valid API key (Groq / OpenAI / LLaMA 3.3), prompts LLMs with strict Pydantic schemas (`RecoveryDiagnosis`, `RecoveryRecommendation`) to output root-cause failure analyses and structured recovery tactics.
 * **Mode 2 (Zero-Downtime Deterministic Fallback)**: If the LLM provider experiences network latency, rate limits (HTTP 429), or malformed outputs, RecoverAI automatically degrades to deterministic heuristics without interrupting workflow execution.
@@ -380,7 +394,7 @@ The Streamlit dashboard (`frontend/app.py`) provides an interactive operations w
 | **Database & ORM** | **SQLAlchemy & SQLite / PostgreSQL** | Persistent models (`FailedPayment`, `ApprovalRequest`, `AuditLog`, `PaymentExecutionClaim`) |
 | **Payment Integration** | **Razorpay SDK & Webhooks** | Test Mode Payment Link generation and cryptographically verified HMAC webhook bus |
 | **Governance & Drift** | **Population Stability Index (PSI)** | Statistical feature drift monitor comparing baseline distributions to incoming streams |
-| **Automated Testing** | **Pytest & TestClient** | 143 automated regression tests across 13 test suites with 100% pass rate |
+| **Automated Testing** | **Pytest & TestClient** | 157 automated regression tests across 21 test files with 100% pass rate |
 
 ---
 
@@ -428,7 +442,7 @@ RecoverAI — AI Revenue Recovery Agent/
 │   ├── executor.py             # Idempotency claim gating & thread locking
 │   ├── razorpay_client.py      # Razorpay SDK client wrapper
 │   └── webhook.py              # HMAC-SHA256 signature verification & event normalizer
-├── tests/                      # Automated test suite (157 test cases across 15 files)
+├── tests/                      # Automated test suite (157 test cases across 21 test files)
 ├── README.md                   # Comprehensive system documentation
 └── requirements.txt            # Project dependencies
 ```
