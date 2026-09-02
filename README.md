@@ -11,7 +11,7 @@
 [![LangGraph](https://img.shields.io/badge/Orchestration-LangGraph-purple.svg)](https://github.com/langchain-ai/langgraph)
 [![scikit-learn](https://img.shields.io/badge/ML-scikit--learn-F7931E.svg)](https://scikit-learn.org/)
 [![Razorpay SDK](https://img.shields.io/badge/Payments-Razorpay%20SDK-0284C7.svg)](https://razorpay.com/)
-[![Tests](https://img.shields.io/badge/Tests-143%20Passed%20(100%25)-brightgreen.svg)]()
+[![Tests](https://img.shields.io/badge/Tests-157%20Passed%20(100%25)-brightgreen.svg)]()
 
 ---
 
@@ -204,6 +204,61 @@ The Policy Guard enforces immutable financial guardrails through 3 discrete outc
 
 > **🛡️ Critical Safety Invariant**: Fraud blocks (`ip_risk_score > 0.70` or `failure_reason == "suspected_risk"`) are permanent and mathematically cannot be overridden by human approval via the UI or REST API.
 
+### 4. Deterministic Decision Explanation Layer (`agent/nodes/policy.py`)
+RecoverAI exposes a fully structured, deterministic explanation of why the policy engine reached its final decision (`ACT`, `ESCALATE`, or `REFUSE`). Explanations are derived 100% deterministically from evaluated criteria and frozen thresholds:
+* **Structured Explanation Schema**:
+  ```json
+  {
+    "decision": "ACT",
+    "summary": "Calibrated recovery probability exceeds operational threshold (τ = 0.35)...",
+    "primary_factor": "STANDARD_POLICY_APPROVAL",
+    "reasons": [
+      "Predicted recovery probability (98.5%) meets or exceeds operational threshold (τ = 0.35).",
+      "Failure categorized as transient (transient) with no permanent instrument defect.",
+      "Consecutive failure streak (0) is within safe retry limit (< 4).",
+      "Transaction amount (₹2,500.00) is within autonomous execution boundary (< ₹8,500.00).",
+      "Zero safety policy violations detected."
+    ],
+    "policy_checks": {
+      "fraud_risk": "PASSED",
+      "instrument_status": "PASSED",
+      "failure_streak": "PASSED",
+      "recovery_viability": "PASSED",
+      "value_threshold": "PASSED",
+      "confidence_band": "PASSED",
+      "velocity_risk": "PASSED"
+    },
+    "metrics_evaluated": {
+      "recovery_probability": 0.9855,
+      "operational_threshold_tau": 0.35,
+      "transaction_amount": 2500.0,
+      "high_value_limit": 8500.0,
+      "consecutive_failure_streak": 0,
+      "streak_limit": 4,
+      "ip_risk_score": 0.05,
+      "ip_risk_limit": 0.70
+    }
+  }
+  ```
+* **Audit Trail Traceability**: Persisted automatically into the `AuditLog.details` JSON column with zero database schema migrations.
+
+### 5. Defensive PII Redaction Layer (`agent/services/pii_redaction.py`)
+To prevent sensitive customer identifiers from leaking to third-party model providers (OpenAI / Groq), RecoverAI enforces a deep-copy prompt-boundary sanitization layer:
+* **Perimeter Sanitization**: Deep-copies context immediately before JSON prompt serialization (`user_prompt = f"...\n{json.dumps(safe_context)}"`); the original `AgentState` and transaction data remain 100% immutable and unmutated.
+* **Direct Key Scrubbing**: Replaces exact personal identity keys (`customer_email`, `email`, `customer_name`, `full_name`, `phone_number`, `mobile_number`, `address`) with redaction markers.
+* **Unstructured Text Redaction**: Recursively scans free-form strings (e.g. gateway error messages in `failure_reason`) to redact email addresses (`[REDACTED_EMAIL]`), Indian/international phone numbers (`[REDACTED_PHONE]`), and 13–19 digit card PANs (`[REDACTED_CARD]`).
+* **Operational Telemetry Preservation**: Whitelists and guarantees untouched preservation of business fields (`transaction_id`, `customer_id`, `amount`, `currency`, `payment_method`, probabilities, and risk scores).
+
+### 6. Interactive Agent Decision Timeline (`frontend/app.py`)
+The Streamlit Command Center (Tabs 2 & 3) visually renders the complete 7-stage lifecycle of every recovery decision:
+1. **Context Loaded**: Ingestion of transaction amounts, payment methods, and historical risk features.
+2. **ML Recovery Prediction**: Calibrated probability estimation ($P$) and Expected Recovery Value ($\text{EV}$).
+3. **Failure Diagnosis**: Root-cause categorization with LLM/Heuristic provenance badges.
+4. **AI Strategy Recommendation**: Proposed action tactic with observable contributing factors.
+5. **Deterministic Policy Guard**: Verdict badge (`ACT`, `ESCALATE`, `REFUSE`) with an interactive, expandable breakdown of the 7 policy checks and evaluated criteria.
+6. **Controlled Execution**: Action dispatch or fee-sparing block confirmation.
+7. **Audit Logging & State Persistence**: Verification of atomic database recording in `AuditLog`.
+
 ---
 
 ## 👤 Human-in-the-Loop (HITL) Governance
@@ -344,7 +399,8 @@ RecoverAI — AI Revenue Recovery Agent/
 │   ├── tools/
 │   │   └── mock_actions.py     # Node 6: Policy-gated action execution
 │   ├── services/
-│   │   └── llm_service.py      # Structured LLM service with fallback engine
+│   │   ├── llm_service.py      # Structured LLM service with fallback engine
+│   │   └── pii_redaction.py    # Defensive PII sanitization (emails, phones, cards)
 │   ├── graph.py                # LangGraph StateGraph assembly & conditional routing
 │   └── demo_data.py            # Normalized demo transaction builder
 ├── backend/                    # FastAPI application & REST endpoints
@@ -360,7 +416,7 @@ RecoverAI — AI Revenue Recovery Agent/
 │   ├── causal_lift.py          # Propensity score IPW causal treatment evaluation
 │   └── sensitivity_analysis.py # 6-scenario financial stress testing
 ├── frontend/
-│   └── app.py                  # Polished Streamlit Command Center (Tabs 1-5)
+│   └── app.py                  # Polished Streamlit Command Center (Tabs 1-5, Decision Timeline)
 ├── ml/                         # Machine learning pipeline
 │   ├── features.py             # 31 approved model features & target leakage audit
 │   ├── predict.py              # ML inference engine & model loader
@@ -372,7 +428,7 @@ RecoverAI — AI Revenue Recovery Agent/
 │   ├── executor.py             # Idempotency claim gating & thread locking
 │   ├── razorpay_client.py      # Razorpay SDK client wrapper
 │   └── webhook.py              # HMAC-SHA256 signature verification & event normalizer
-├── tests/                      # Automated test suite (143 test cases across 13 files)
+├── tests/                      # Automated test suite (157 test cases across 15 files)
 ├── README.md                   # Comprehensive system documentation
 └── requirements.txt            # Project dependencies
 ```
@@ -418,7 +474,7 @@ uvicorn backend.main:app --reload --port 8000
 ### 4. Run Automated Test Suite
 ```bash
 pytest tests/ -v
-# Verified: 143 passed in ~90s (100% pass rate)
+# Verified: 157 passed in ~2.5 minutes (100% pass rate)
 ```
 
 ---
