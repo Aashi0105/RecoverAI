@@ -197,7 +197,7 @@ The repository includes four pre-configured scenarios (`backend/routes/demo.py`)
 
 1. Payment links are never counted as recovered revenue. Early in development, generating a link was treated as a recovery event, but that produced phantom revenue whenever customers ignored the link. Decoupling action execution from settlement confirmation—requiring a signed `payment_link.paid` webhook to mark an order recovered—resolved this discrepancy.
 
-2. Language models should diagnose, not execute. Letting an LLM trigger payment APIs directly is fragile during outages or boundary errors. We restricted the model to emitting structured diagnosis schemas, placing all dispatch authority behind a deterministic policy guard.
+2. Language models should diagnose, not execute. Letting an LLM trigger payment APIs directly is fragile during outages or boundary errors. The model is restricted to emitting structured diagnosis schemas, with all dispatch authority remaining behind a deterministic policy guard.
 
 3. Idempotency combines thread locks with database constraints. Duplicate webhook deliveries and rapid operator double-clicks can race within milliseconds. An in-memory thread lock catches duplicate requests inside the same process, while a unique constraint on `idempotency_key` in the `payment_execution_claims` table ensures safety across processes. Duplicate attempts simply return the existing claim.
 
