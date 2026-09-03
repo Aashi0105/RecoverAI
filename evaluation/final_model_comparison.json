@@ -2,38 +2,38 @@
   "selected_candidate_experiment_id": "EXP_0",
   "selected_candidate_name": "baseline_logistic_regression",
   "baseline_test_metrics": {
-    "accuracy": 0.7046,
-    "precision": 0.7029,
-    "recall": 0.8909,
-    "f1": 0.7858,
-    "roc_auc": 0.7173,
-    "pr_auc": 0.7594,
-    "brier_score": 0.1983,
+    "accuracy": 0.7062,
+    "precision": 0.7052,
+    "recall": 0.8883,
+    "f1": 0.7862,
+    "roc_auc": 0.7188,
+    "pr_auc": 0.761,
+    "brier_score": 0.1976,
     "confusion_matrix": {
-      "tn": 103,
-      "fp": 145,
-      "fn": 42,
-      "tp": 343
+      "tn": 105,
+      "fp": 143,
+      "fn": 43,
+      "tp": 342
     },
-    "fpr": 0.5847,
-    "fnr": 0.1091
+    "fpr": 0.5766,
+    "fnr": 0.1117
   },
   "final_model_test_metrics": {
-    "accuracy": 0.7046,
-    "precision": 0.7029,
-    "recall": 0.8909,
-    "f1": 0.7858,
-    "roc_auc": 0.7173,
-    "pr_auc": 0.7594,
-    "brier_score": 0.1983,
+    "accuracy": 0.7062,
+    "precision": 0.7052,
+    "recall": 0.8883,
+    "f1": 0.7862,
+    "roc_auc": 0.7188,
+    "pr_auc": 0.761,
+    "brier_score": 0.1976,
     "confusion_matrix": {
-      "tn": 103,
-      "fp": 145,
-      "fn": 42,
-      "tp": 343
+      "tn": 105,
+      "fp": 143,
+      "fn": 43,
+      "tp": 342
     },
-    "fpr": 0.5847,
-    "fnr": 0.1091
+    "fpr": 0.5766,
+    "fnr": 0.1117
   },
   "improvement": {
     "roc_auc_absolute": 0.0,

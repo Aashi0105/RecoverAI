@@ -16,9 +16,12 @@ Evaluates model selection via 5-Fold Stratified CV on Development data, then eva
 import json
 import os
 import time
+import datetime
+import platform
 import joblib
 import numpy as np
 import pandas as pd
+import sklearn
 from typing import Dict, Any, List, Optional
 
 
@@ -172,6 +175,19 @@ def run_all_experiments(
 
     joblib.dump(pipe0, os.path.join(exp_dir, "exp_0_baseline.joblib"))
     trained_pipelines["EXP_0"] = pipe0
+
+    exp0_metadata = {
+        "experiment_id": "EXP_0",
+        "model_name": "baseline_logistic_regression",
+        "sklearn_version": sklearn.__version__,
+        "python_version": platform.python_version(),
+        "training_timestamp_utc": datetime.datetime.now(datetime.timezone.utc).isoformat(),
+        "random_seed": seed,
+        "feature_count": len(exp0_features),
+        "features": exp0_features,
+    }
+    with open(os.path.join(exp_dir, "exp_0_baseline_metadata.json"), "w") as f:
+        json.dump(exp0_metadata, f, indent=2)
 
     exp0_record = {
         "experiment_id": "EXP_0",

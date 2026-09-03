@@ -32,7 +32,7 @@ The goal of this record is to maintain strict scientific and technical honesty b
 | **PSI Feature Drift Detection** | 10 quantile binning feature drift monitoring against frozen baseline snapshot ($N=3,581$). | [monitoring/drift_detection.py](file:///c:/Users/Aashi/OneDrive/Desktop/RecoverAI%20%E2%80%94%20AI%20Revenue%20Recovery%20Agent/monitoring/drift_detection.py), [monitoring/baseline_snapshot.json](file:///c:/Users/Aashi/OneDrive/Desktop/RecoverAI%20%E2%80%94%20AI%20Revenue%20Recovery%20Agent/monitoring/baseline_snapshot.json) | **VERIFIED** | `pytest tests/test_drift_detection.py -v` | Appends structured audit events to `logs/drift_audit.jsonl` (`persist=False` in dashboard UI). |
 | **Razorpay Test Mode Integration** | SDK integration using `razorpay.Client` creating Test Mode Payment Links (`rzp_test_...`). | [payment/razorpay_client.py](file:///c:/Users/Aashi/OneDrive/Desktop/RecoverAI%20%E2%80%94%20AI%20Revenue%20Recovery%20Agent/payment/razorpay_client.py), [payment/executor.py](file:///c:/Users/Aashi/OneDrive/Desktop/RecoverAI%20%E2%80%94%20AI%20Revenue%20Recovery%20Agent/payment/executor.py) | **VERIFIED (TEST MODE ONLY)** | `pytest tests/test_razorpay.py -v` | Key prefix validation enforced. Default `dry_run=True` flag prevents network calls unless toggled. |
 | **Streamlit Interactive Dashboard** | Live Web Decision Center with top metric cards, demo buttons, Plotly charts, and drift expander. | [frontend/app.py](file:///c:/Users/Aashi/OneDrive/Desktop/RecoverAI%20%E2%80%94%20AI%20Revenue%20Recovery%20Agent/frontend/app.py) | **MANUAL VERIFICATION** | `streamlit run frontend/app.py` | Runs locally on `http://localhost:8501` without tracebacks or Streamlit error boxes. |
-| **Automated Test Suite** | 157 automated Pytest test cases across 21 test files, including 10,000 property-tested boundary iterations. | [tests/](file:///c:/Users/Aashi/OneDrive/Desktop/RecoverAI%20%E2%80%94%20AI%20Revenue%20Recovery%20Agent/tests) | **VERIFIED** | `pytest tests/ -v` | 157 tests collected and passed (100% pass rate, 41 non-blocking warnings) in ~3.5 minutes. |
+| **Automated Test Suite** | 158 automated Pytest test cases across 21 test files, including 10,000 property-tested boundary iterations. | [tests/](file:///c:/Users/Aashi/OneDrive/Desktop/RecoverAI%20%E2%80%94%20AI%20Revenue%20Recovery%20Agent/tests) | **VERIFIED** | `pytest tests/ -v` | 158 tests collected and passed (100% pass rate, 41 non-blocking warnings) in ~2.75 minutes. |
 
 ---
 
@@ -189,7 +189,7 @@ Implemented in [agent/nodes/policy.py](file:///c:/Users/Aashi/OneDrive/Desktop/R
 All commands are valid and runnable from the repository root:
 
 ```bash
-# 1. Run Complete 157-Test Pytest Suite
+# 1. Run Complete 158-Test Pytest Suite
 pytest tests/ -v
 
 # 2. Launch Streamlit Operations Dashboard
@@ -203,9 +203,9 @@ uvicorn backend.main:app --reload --port 8000
 
 ## 11. Latest Verification Run
 
-* **Date**: 2026-09-02
+* **Date**: 2026-09-03
 * **Command**: `pytest tests/ -v`
-* **Result**: 157 passed, 0 failed (100% pass rate)
+* **Result**: 158 passed, 0 failed (100% pass rate)
 * **Warnings**: 41 (non-blocking framework deprecation warnings)
-* **Duration**: 214.28 seconds (~3m 34s)
+* **Duration**: 165.78 seconds (~2m 45s)
 * **Status**: Completed successfully with all test suites green.

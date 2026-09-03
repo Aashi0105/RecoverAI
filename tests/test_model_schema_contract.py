@@ -124,3 +124,32 @@ def test_exp0_baseline_artifact_schema_contract():
     df_dummy = pd.DataFrame(dummy_input)
     prob = pipeline.predict_proba(df_dummy)[0, 1]
     assert 0.0 <= prob <= 1.0, f"Predicted probability {prob} out of bounds [0, 1]"
+
+
+def test_model_artifacts_scikit_learn_version_consistency():
+    """
+    Strict reproducibility test ensuring both serialized model artifacts load under
+    the pinned scikit-learn runtime without raising an InconsistentVersionWarning.
+    """
+    import warnings
+    from sklearn.exceptions import InconsistentVersionWarning
+
+    artifacts_to_verify = [
+        os.path.join(PROJECT_ROOT, "ml", "models", "recovery_model.joblib"),
+        os.path.join(PROJECT_ROOT, "ml", "models", "experiments", "exp_0_baseline.joblib"),
+    ]
+
+    for model_path in artifacts_to_verify:
+        assert os.path.exists(model_path), f"Artifact missing: {model_path}"
+        with warnings.catch_warnings(record=True) as recorded_warnings:
+            warnings.simplefilter("always")
+            loaded = joblib.load(model_path)
+            assert loaded is not None
+
+            version_warnings = [
+                w for w in recorded_warnings if issubclass(w.category, InconsistentVersionWarning)
+            ]
+            assert not version_warnings, (
+                f"Artifact {os.path.basename(model_path)} emitted InconsistentVersionWarning: "
+                f"{[str(w.message) for w in version_warnings]}"
+            )

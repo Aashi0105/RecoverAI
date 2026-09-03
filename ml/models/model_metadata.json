@@ -1,7 +1,54 @@
 {
-  "selected_model": "Logistic Regression",
+  "selected_model": "LogisticRegression",
+  "production_model": "LogisticRegression",
+  "environment_metadata": {
+    "sklearn_version": "1.9.0",
+    "python_version": "3.12.0",
+    "training_timestamp_utc": "2026-09-03T06:47:40.000438+00:00",
+    "random_seed": 42,
+    "feature_count": 31,
+    "feature_names": [
+      "amount",
+      "amount_vs_customer_average",
+      "hour",
+      "day_of_week",
+      "is_weekend",
+      "is_subscription",
+      "subscription_age_days",
+      "is_first_transaction",
+      "customer_age_days",
+      "customer_previous_transactions",
+      "customer_successful_transactions",
+      "customer_historical_success_rate",
+      "customer_lifetime_value",
+      "customer_average_transaction",
+      "customer_transaction_frequency_30d",
+      "consecutive_failure_streak",
+      "customer_past_recovery_rate_pre_current",
+      "previous_failures_24h",
+      "previous_failures_7d",
+      "previous_successes_30d",
+      "transactions_24h",
+      "transactions_7d",
+      "device_changed",
+      "location_changed",
+      "ip_risk_score",
+      "velocity_score",
+      "payment_method",
+      "payment_network",
+      "payment_channel",
+      "failure_reason",
+      "failure_category"
+    ]
+  },
+  "dataset_split": {
+    "train_samples": 70,
+    "validation_samples": 15,
+    "test_samples": 16,
+    "total_failed_samples": 101
+  },
   "validation_metrics": {
-    "Logistic Regression": {
+    "LogisticRegression": {
       "accuracy": 0.7333,
       "precision": 0.8,
       "recall": 0.8,

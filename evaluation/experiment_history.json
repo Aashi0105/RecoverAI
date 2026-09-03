@@ -27,23 +27,23 @@
       ],
       "changes": "Simple benchmark using 5 basic transaction features.",
       "selection_dataset": "cross_validation",
-      "fit_time_seconds": 0.0187,
+      "fit_time_seconds": 0.0123,
       "metrics": {
-        "accuracy": 0.7326,
-        "precision": 0.7235,
-        "recall": 0.9062,
-        "f1": 0.8046,
-        "roc_auc": 0.743,
-        "pr_auc": 0.7757,
-        "brier_score": 0.1877,
+        "accuracy": 0.731,
+        "precision": 0.7211,
+        "recall": 0.9089,
+        "f1": 0.8041,
+        "roc_auc": 0.7446,
+        "pr_auc": 0.7773,
+        "brier_score": 0.1871,
         "confusion_matrix": {
-          "tn": 115,
-          "fp": 133,
-          "fn": 36,
-          "tp": 348
+          "tn": 113,
+          "fp": 135,
+          "fn": 35,
+          "tp": 349
         },
-        "fpr": 0.5363,
-        "fnr": 0.0938
+        "fpr": 0.5444,
+        "fnr": 0.0911
       },
       "cross_validation": {
         "mean_roc_auc": 0.7197,
@@ -99,7 +99,7 @@
       ],
       "changes": "Full 29 approved raw features without hyperparameter tuning.",
       "selection_dataset": "cross_validation",
-      "fit_time_seconds": 0.4414,
+      "fit_time_seconds": 0.6616,
       "metrics": {
         "accuracy": 0.7389,
         "precision": 0.7168,
@@ -153,7 +153,7 @@
       ],
       "changes": "Purged 15 uninformative noise features. Kept 13 core signal features.",
       "selection_dataset": "cross_validation",
-      "fit_time_seconds": 0.4527,
+      "fit_time_seconds": 0.6814,
       "metrics": {
         "accuracy": 0.7358,
         "precision": 0.7157,
@@ -233,7 +233,7 @@
       ],
       "changes": "Added 8 non-leaking engineered features (amount_log, streak, risk_velocity_product, high_risk_flag, etc.).",
       "selection_dataset": "cross_validation",
-      "fit_time_seconds": 0.4166,
+      "fit_time_seconds": 0.869,
       "metrics": {
         "accuracy": 0.7294,
         "precision": 0.7143,
@@ -320,7 +320,7 @@
       },
       "changes": "Tuned via RandomizedSearchCV on train fold with CV validation.",
       "selection_dataset": "cross_validation",
-      "fit_time_seconds": 4.3128,
+      "fit_time_seconds": 15.3098,
       "metrics": {
         "accuracy": 0.7326,
         "precision": 0.7189,
@@ -400,7 +400,7 @@
       ],
       "changes": "Sigmoidal probability calibration applied to tuned XGBoost candidate.",
       "selection_dataset": "cross_validation",
-      "fit_time_seconds": 0.9747,
+      "fit_time_seconds": 2.7174,
       "metrics": {
         "accuracy": 0.731,
         "precision": 0.7157,

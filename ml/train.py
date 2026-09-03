@@ -16,9 +16,12 @@ Runs end-to-end:
 import json
 import os
 import sys
+import datetime
+import platform
 import joblib
 import numpy as np
 import pandas as pd
+import sklearn
 
 PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 if PROJECT_ROOT not in sys.path:
@@ -212,16 +215,27 @@ def train_and_evaluate_ml_pipeline(
     artifact_path = os.path.join(model_dir, "recovery_model.joblib")
     metadata_path = os.path.join(model_dir, "model_metadata.json")
 
+    env_metadata = {
+        "sklearn_version": sklearn.__version__,
+        "python_version": platform.python_version(),
+        "training_timestamp_utc": datetime.datetime.now(datetime.timezone.utc).isoformat(),
+        "random_seed": seed,
+        "feature_count": len(APPROVED_MODEL_FEATURES),
+        "feature_names": APPROVED_MODEL_FEATURES,
+    }
+
     joblib.dump({
         "pipeline": best_pipeline,
         "selected_model": best_name,
         "feature_names": APPROVED_MODEL_FEATURES,
-        "metrics": test_metrics
+        "metrics": test_metrics,
+        "environment_metadata": env_metadata,
     }, artifact_path)
 
     metadata = {
         "selected_model": best_name,
         "production_model": best_name,
+        "environment_metadata": env_metadata,
         "dataset_split": {
             "train_samples": len(X_train),
             "validation_samples": len(X_val),

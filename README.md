@@ -11,7 +11,7 @@
 [![LangGraph](https://img.shields.io/badge/Orchestration-LangGraph-purple.svg)](https://github.com/langchain-ai/langgraph)
 [![scikit-learn](https://img.shields.io/badge/ML-scikit--learn-F7931E.svg)](https://scikit-learn.org/)
 [![Razorpay SDK](https://img.shields.io/badge/Payments-Razorpay%20SDK-0284C7.svg)](https://razorpay.com/)
-[![Tests](https://img.shields.io/badge/Tests-157%20Passed%20(100%25)-brightgreen.svg)]()
+[![Tests](https://img.shields.io/badge/Tests-158%20Passed%20(100%25)-brightgreen.svg)]()
 
 ---
 
@@ -394,7 +394,7 @@ The Streamlit dashboard (`frontend/app.py`) provides an interactive operations w
 | **Database & ORM** | **SQLAlchemy & SQLite / PostgreSQL** | Persistent models (`FailedPayment`, `ApprovalRequest`, `AuditLog`, `PaymentExecutionClaim`) |
 | **Payment Integration** | **Razorpay SDK & Webhooks** | Test Mode Payment Link generation and cryptographically verified HMAC webhook bus |
 | **Governance & Drift** | **Population Stability Index (PSI)** | Statistical feature drift monitor comparing baseline distributions to incoming streams |
-| **Automated Testing** | **Pytest & TestClient** | 157 automated regression tests across 21 test files with 100% pass rate |
+| **Automated Testing** | **Pytest & TestClient** | 158 automated regression tests across 21 test files with 100% pass rate |
 
 ---
 
@@ -442,7 +442,7 @@ RecoverAI — AI Revenue Recovery Agent/
 │   ├── executor.py             # Idempotency claim gating & thread locking
 │   ├── razorpay_client.py      # Razorpay SDK client wrapper
 │   └── webhook.py              # HMAC-SHA256 signature verification & event normalizer
-├── tests/                      # Automated test suite (157 test cases across 21 test files)
+├── tests/                      # Automated test suite (158 test cases across 21 test files)
 ├── README.md                   # Comprehensive system documentation
 └── requirements.txt            # Project dependencies
 ```
@@ -488,7 +488,7 @@ uvicorn backend.main:app --reload --port 8000
 ### 4. Run Automated Test Suite
 ```bash
 pytest tests/ -v
-# Verified: 157 passed in ~2.5 minutes (100% pass rate)
+# Verified: 158 passed in ~2.75 minutes (100% pass rate)
 ```
 
 ---
