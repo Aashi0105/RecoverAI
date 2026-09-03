@@ -43,7 +43,7 @@ PREDEFINED_SCENARIOS: Dict[str, Dict[str, Any]] = {
         "amount": 2500.0,
         "failure_reason": "network_timeout",
         "failure_category": "transient",
-        "business_title": "💰 Autonomous Revenue Recovery",
+        "business_title": "Autonomous Revenue Recovery",
         "business_impact": "₹2,500 recovery action successfully initiated autonomously without requiring manual human intervention."
     },
     "human_approval": {
@@ -56,7 +56,7 @@ PREDEFINED_SCENARIOS: Dict[str, Dict[str, Any]] = {
         "amount": 14500.0,
         "failure_reason": "network_timeout",
         "failure_category": "transient",
-        "business_title": "🛡️ Controlled High-Value Recovery",
+        "business_title": "Controlled High-Value Recovery",
         "business_impact": f"₹14,500 high-value action required merchant approval. Autonomous execution was safely halted by policy guard."
     },
     "fraud_block": {
@@ -69,7 +69,7 @@ PREDEFINED_SCENARIOS: Dict[str, Dict[str, Any]] = {
         "amount": 7500.0,
         "failure_reason": "suspected_risk",
         "failure_category": "risk_related",
-        "business_title": "🚨 Chargeback & Fraud Protection",
+        "business_title": "Chargeback & Fraud Protection",
         "business_impact": "Potential recovery action was blocked due to critical IP fraud risk (0.92). Zero external money movement occurred."
     },
     "low_probability": {
@@ -82,7 +82,7 @@ PREDEFINED_SCENARIOS: Dict[str, Dict[str, Any]] = {
         "amount": 3200.0,
         "failure_reason": "bank_declined",
         "failure_category": "bank_decline",
-        "business_title": "📉 Negative EV & Fee Avoidance",
+        "business_title": "Negative EV & Fee Avoidance",
         "business_impact": "Low-probability recovery attempt was avoided. Customer spam and unnecessary action fees prevented."
     }
 }
@@ -102,7 +102,7 @@ def construct_timeline(result: Dict[str, Any], scenario: str, closed_loop: bool 
         {
             "step_number": 1,
             "title": "Payment Failure Detected",
-            "icon": "🚨",
+            "icon": "",
             "summary": f"Transaction {result.get('transaction_id')} of ₹{amount:,.2f} failed via gateway.",
             "details": {
                 "transaction_id": result.get("transaction_id"),
@@ -115,7 +115,7 @@ def construct_timeline(result: Dict[str, Any], scenario: str, closed_loop: bool 
         {
             "step_number": 2,
             "title": "ML Recovery Prediction",
-            "icon": "📊",
+            "icon": "",
             "summary": f"Estimated recovery probability: {prob * 100:.1f}%. Expected Recovery Value: ₹{ev:,.2f}.",
             "details": {
                 "recovery_probability": f"{prob * 100:.1f}%",
@@ -126,8 +126,8 @@ def construct_timeline(result: Dict[str, Any], scenario: str, closed_loop: bool 
         },
         {
             "step_number": 3,
-            "title": f"Failure Diagnosis ({'🧠 LLM' if source_diag == 'llm' else '⚙️ Heuristic Fallback'})",
-            "icon": "🔍",
+            "title": f"Failure Diagnosis ({'LLM' if source_diag == 'llm' else 'Heuristic Fallback'})",
+            "icon": "",
             "summary": result.get("diagnosis") or "Failure pattern analyzed.",
             "details": {
                 "diagnosis": result.get("diagnosis"),
@@ -137,8 +137,8 @@ def construct_timeline(result: Dict[str, Any], scenario: str, closed_loop: bool 
         },
         {
             "step_number": 4,
-            "title": f"Recovery Recommendation ({'🧠 LLM' if source_rec == 'llm' else '⚙️ Heuristic Fallback'})",
-            "icon": "💡",
+            "title": f"Recovery Recommendation ({'LLM' if source_rec == 'llm' else 'Heuristic Fallback'})",
+            "icon": "",
             "summary": f"Strategy: {action.upper()}.",
             "details": {
                 "recommended_action": action.upper(),
@@ -150,7 +150,7 @@ def construct_timeline(result: Dict[str, Any], scenario: str, closed_loop: bool 
         {
             "step_number": 5,
             "title": "Deterministic Policy Decision",
-            "icon": "🛡️",
+            "icon": "",
             "summary": f"Policy Guard Verdict: {decision}.",
             "details": {
                 "decision": decision,
@@ -166,7 +166,7 @@ def construct_timeline(result: Dict[str, Any], scenario: str, closed_loop: bool 
         steps.append({
             "step_number": 6,
             "title": "Controlled Action Execution",
-            "icon": "⚡",
+            "icon": "",
             "summary": f"Recovery action '{action}' executed safely.",
             "details": {
                 "action": action,
@@ -179,7 +179,7 @@ def construct_timeline(result: Dict[str, Any], scenario: str, closed_loop: bool 
         steps.append({
             "step_number": 6,
             "title": "Escalated to Merchant Review Queue",
-            "icon": "👤",
+            "icon": "",
             "summary": "Automated execution halted. Awaiting merchant human authorization.",
             "details": {
                 "queue": "Merchant Approval Queue",
@@ -192,7 +192,7 @@ def construct_timeline(result: Dict[str, Any], scenario: str, closed_loop: bool 
         steps.append({
             "step_number": 6,
             "title": "Execution Blocked by Safety Guard",
-            "icon": "🛑",
+            "icon": "",
             "summary": "No external action executed. Customer protected from spam or risk.",
             "details": {
                 "status": "BLOCKED_FOR_SAFETY",
@@ -206,8 +206,8 @@ def construct_timeline(result: Dict[str, Any], scenario: str, closed_loop: bool 
         steps.append({
             "step_number": 7,
             "title": "Closed-Loop Settlement Confirmed",
-            "icon": "💰",
-            "summary": f"Customer completed payment link! Recovered: ₹{amount:,.2f}.",
+            "icon": "",
+            "summary": f"Customer completed payment link. Recovered: ₹{amount:,.2f}.",
             "details": {
                 "verification_status": "SUCCESS",
                 "money_recovered": f"₹{amount:,.2f}",
@@ -219,7 +219,7 @@ def construct_timeline(result: Dict[str, Any], scenario: str, closed_loop: bool 
         steps.append({
             "step_number": 7,
             "title": "Outcome Verification Status",
-            "icon": "📋",
+            "icon": "",
             "summary": f"Status: {result.get('agent_status', 'COMPLETED')}.",
             "details": {
                 "verification_status": result.get("verification_status", "PENDING"),

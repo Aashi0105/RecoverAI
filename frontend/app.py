@@ -5,11 +5,11 @@ A modern, enterprise-grade AI operations dashboard for autonomous payment recove
 Expected-Value policy optimization, deterministic safety guardrails, and closed-loop Razorpay settlement.
 
 Integrates 5 Core Operational Workspaces:
-- Tab 1: 🏠 Recovery Command Center (Live KPIs, EV economics, recovery funnel, AI decision distribution, activity feed)
-- Tab 2: 🎮 Demo Simulator (1-click Buildathon scenarios A, B, C, D with instant injection & boundary testing)
-- Tab 3: 🤖 Live Agent Decision Trace (7-stage visual pipeline with LLM/Heuristic badges & zero CoT leakage)
-- Tab 4: 👤 Merchant Approval Queue (Human-in-the-loop governance for high-value orders & fraud safety invariants)
-- Tab 5: 📊 Recovery Insights & Governance (EV threshold curves, PSI feature drift monitor, immutable audit logs)
+- Tab 1: Recovery Command Center (Live KPIs, EV economics, recovery funnel, AI decision distribution, activity feed)
+- Tab 2: Demo Simulator (1-click Buildathon scenarios A, B, C, D with instant injection & boundary testing)
+- Tab 3: Live Decision Trace (7-stage visual pipeline with LLM/Heuristic badges & zero CoT leakage)
+- Tab 4: Merchant Approval Queue (Human-in-the-loop governance for high-value orders & fraud safety invariants)
+- Tab 5: Recovery Insights & Governance (EV threshold curves, PSI feature drift monitor, immutable audit logs)
 """
 
 import os
@@ -53,7 +53,7 @@ try:
     from payment.webhook import normalize_razorpay_webhook
     from backend.routes.demo import PREDEFINED_SCENARIOS, construct_timeline
 except Exception as e:
-    st.error(f"❌ FAIL-LOUD INTEGRATION ERROR: Failed to import RecoverAI backend modules.\n\nError: {e}")
+    st.error(f"FAIL-LOUD INTEGRATION ERROR: Failed to import RecoverAI backend modules.\n\nError: {e}")
     st.stop()
 
 # Ensure database tables exist
@@ -63,8 +63,7 @@ except Exception:
     pass
 
 st.set_page_config(
-    page_title="RecoverAI — AI Revenue Recovery Command Center",
-    page_icon="💳",
+    page_title="RecoverAI — Revenue Recovery Command Center",
     layout="wide",
     initial_sidebar_state="expanded"
 )
@@ -74,177 +73,210 @@ st.set_page_config(
 # -----------------------------------------------------------------------------
 st.markdown("""
 <style>
-    /* Global Typography & Background Adjustments */
+    /* Global Typography & Background Adjustments - Near-Black & Off-White */
     .stApp {
-        background-color: #0b0f19;
-        color: #f1f5f9;
+        background-color: #080A0A;
+        color: #F5F7F5;
         font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    }
+
+    /* Sidebar Dark Theme - Differentiated Near-Black */
+    [data-testid="stSidebar"],
+    [data-testid="stSidebarContent"],
+    section[data-testid="stSidebar"] > div {
+        background-color: #0D1010 !important;
+        color: #F5F7F5 !important;
+        border-right: 1px solid #242B2B;
+    }
+    [data-testid="stSidebar"] [data-testid="stMarkdownContainer"] p,
+    [data-testid="stSidebar"] [data-testid="stMarkdownContainer"] span {
+        color: #A7B0AD;
+    }
+    [data-testid="stSidebar"] h1,
+    [data-testid="stSidebar"] h2,
+    [data-testid="stSidebar"] h3 {
+        color: #F5F7F5 !important;
     }
     
     /* Hero KPI Cards */
     .metric-card-hero {
-        background: linear-gradient(145deg, #131c2e, #0f172a);
-        border: 1px solid #1e293b;
-        border-top: 3px solid #3b82f6;
-        border-radius: 10px;
+        background: #121616;
+        border: 1px solid #242B2B;
+        border-radius: 8px;
         padding: 16px 14px;
         text-align: left;
         margin-bottom: 12px;
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
-        transition: transform 0.15s ease, border-color 0.15s ease;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
+        transition: border-color 0.15s ease;
     }
     .metric-card-hero:hover {
-        transform: translateY(-2px);
-        border-color: #38bdf8;
+        border-color: #333C3C;
     }
     .metric-card-green {
-        border-top: 3px solid #10b981;
-    }
-    .metric-card-amber {
-        border-top: 3px solid #f59e0b;
+        border-top: 2px solid #39FF88;
     }
     .metric-card-purple {
-        border-top: 3px solid #8b5cf6;
+        border-top: 2px solid #A78BFA;
+    }
+    .metric-card-amber {
+        border-top: 2px solid #FB923C;
     }
     
     .metric-hero-label {
-        color: #94a3b8;
-        font-size: 0.78rem;
+        color: #707A77;
+        font-size: 0.75rem;
         font-weight: 600;
         text-transform: uppercase;
-        letter-spacing: 0.06em;
+        letter-spacing: 0.05em;
     }
     .metric-hero-val {
-        color: #ffffff;
-        font-size: 1.60rem;
-        font-weight: 800;
+        color: #F5F7F5;
+        font-size: 1.55rem;
+        font-weight: 700;
         margin-top: 4px;
         letter-spacing: -0.02em;
     }
     .metric-hero-sub {
-        color: #64748b;
-        font-size: 0.76rem;
+        color: #707A77;
+        font-size: 0.75rem;
         margin-top: 4px;
         font-weight: 500;
     }
     .metric-hero-delta-green {
-        color: #34d399;
-        font-size: 0.82rem;
-        font-weight: 700;
+        color: #39FF88;
+        font-size: 0.80rem;
+        font-weight: 600;
         margin-top: 3px;
     }
     
     /* Funnel Step Card */
     .funnel-card {
-        background: #111827;
-        border: 1px solid #1f2937;
-        border-radius: 8px;
+        background: #121616;
+        border: 1px solid #242B2B;
+        border-radius: 6px;
         padding: 12px 14px;
         text-align: center;
         margin-bottom: 8px;
     }
     .funnel-step-title {
-        color: #9ca3af;
+        color: #707A77;
         font-size: 0.75rem;
-        font-weight: 700;
+        font-weight: 600;
         text-transform: uppercase;
-        letter-spacing: 0.05em;
+        letter-spacing: 0.04em;
     }
     .funnel-step-val {
-        color: #f9fafb;
-        font-size: 1.35rem;
-        font-weight: 800;
+        color: #F5F7F5;
+        font-size: 1.30rem;
+        font-weight: 700;
         margin-top: 2px;
     }
     .funnel-step-pct {
-        color: #60a5fa;
+        color: #39FF88;
         font-size: 0.78rem;
         font-weight: 600;
         margin-top: 2px;
     }
     
-    /* Semantic Status Badges */
+    /* Semantic Status Badges - Compact & Understated */
     .badge-act {
-        background-color: #064e3b;
-        color: #34d399;
+        background-color: rgba(34, 211, 238, 0.12);
+        color: #22D3EE;
+        border: 1px solid rgba(34, 211, 238, 0.35);
         padding: 3px 9px;
-        border-radius: 6px;
+        border-radius: 4px;
         font-weight: 700;
-        font-size: 0.80rem;
-        letter-spacing: 0.03em;
-        display: inline-block;
-    }
-    .badge-escalate {
-        background-color: #78350f;
-        color: #fde047;
-        padding: 3px 9px;
-        border-radius: 6px;
-        font-weight: 700;
-        font-size: 0.80rem;
-        letter-spacing: 0.03em;
-        display: inline-block;
-    }
-    .badge-refuse {
-        background-color: #7f1d1d;
-        color: #fca5a5;
-        padding: 3px 9px;
-        border-radius: 6px;
-        font-weight: 700;
-        font-size: 0.80rem;
-        letter-spacing: 0.03em;
+        font-size: 0.78rem;
+        letter-spacing: 0.02em;
         display: inline-block;
     }
     .badge-recovered {
-        background-color: #047857;
-        color: #ffffff;
+        background-color: rgba(167, 139, 250, 0.15);
+        color: #A78BFA;
+        border: 1px solid rgba(167, 139, 250, 0.40);
         padding: 3px 9px;
-        border-radius: 6px;
+        border-radius: 4px;
         font-weight: 700;
-        font-size: 0.80rem;
-        letter-spacing: 0.03em;
+        font-size: 0.78rem;
+        letter-spacing: 0.02em;
+        display: inline-block;
+    }
+    .badge-approved {
+        background-color: rgba(251, 191, 36, 0.15);
+        color: #FBBF24;
+        border: 1px solid rgba(251, 191, 36, 0.40);
+        padding: 3px 9px;
+        border-radius: 4px;
+        font-weight: 700;
+        font-size: 0.78rem;
+        letter-spacing: 0.02em;
+        display: inline-block;
+    }
+    .badge-escalate {
+        background-color: rgba(251, 146, 60, 0.15);
+        color: #FB923C;
+        border: 1px solid rgba(251, 146, 60, 0.40);
+        padding: 3px 9px;
+        border-radius: 4px;
+        font-weight: 700;
+        font-size: 0.78rem;
+        letter-spacing: 0.02em;
+        display: inline-block;
+    }
+    .badge-refuse {
+        background-color: rgba(255, 92, 92, 0.15);
+        color: #FF5C5C;
+        border: 1px solid rgba(255, 92, 92, 0.40);
+        padding: 3px 9px;
+        border-radius: 4px;
+        font-weight: 700;
+        font-size: 0.78rem;
+        letter-spacing: 0.02em;
         display: inline-block;
     }
     .badge-llm {
-        background-color: #312e81;
-        color: #c7d2fe;
+        background-color: rgba(57, 255, 136, 0.12);
+        color: #39FF88;
+        border: 1px solid rgba(57, 255, 136, 0.30);
         padding: 2px 7px;
-        border-radius: 5px;
+        border-radius: 4px;
         font-weight: 600;
-        font-size: 0.75rem;
+        font-size: 0.72rem;
     }
     .badge-heuristic {
-        background-color: #1e293b;
-        color: #94a3b8;
+        background-color: rgba(112, 122, 119, 0.15);
+        color: #A7B0AD;
+        border: 1px solid rgba(112, 122, 119, 0.35);
         padding: 2px 7px;
-        border-radius: 5px;
+        border-radius: 4px;
         font-weight: 600;
-        font-size: 0.75rem;
+        font-size: 0.72rem;
     }
     
     /* Trace & Pipeline Step Cards */
     .step-card {
-        background-color: #0f172a;
-        border: 1px solid #1e293b;
-        border-left: 4px solid #3b82f6;
-        border-radius: 8px;
+        background-color: #121616;
+        border: 1px solid #242B2B;
+        border-left: 3px solid #39FF88;
+        border-radius: 6px;
         padding: 14px 16px;
         margin-bottom: 12px;
     }
     .step-card-act {
-        border-left-color: #10b981;
+        border-left-color: #22D3EE;
     }
     .step-card-escalate {
-        border-left-color: #f59e0b;
+        border-left-color: #FB923C;
     }
     .step-card-refuse {
-        border-left-color: #ef4444;
+        border-left-color: #FF5C5C;
     }
     
     /* Feed / Activity Stream Cards */
     .activity-item {
-        background-color: #111827;
-        border: 1px solid #1f2937;
-        border-radius: 8px;
+        background-color: #121616;
+        border: 1px solid #242B2B;
+        border-radius: 6px;
         padding: 12px 16px;
         margin-bottom: 10px;
         display: flex;
@@ -252,72 +284,120 @@ st.markdown("""
         align-items: center;
     }
     
-    /* Scenario Selector Cards */
+    /* Scenario Selector Cards - Charcoal & Neon Green Highlight */
     .scenario-box {
-        background: #1e293b;
-        border: 1px solid #334155;
+        background: #121616;
+        border: 1px solid #242B2B;
         border-radius: 8px;
-        padding: 12px;
+        padding: 14px 12px;
         text-align: left;
         margin-bottom: 10px;
+        transition: border-color 0.15s ease, background 0.15s ease, box-shadow 0.15s ease;
+    }
+    .scenario-box:hover {
+        border-color: #333C3C;
     }
     .scenario-box-active {
-        border-color: #38bdf8;
-        background: #0f233f;
+        border-color: #39FF88 !important;
+        background: #171C1C !important;
+    }
+    .scenario-title {
+        font-weight: 700;
+        color: #F5F7F5;
+        font-size: 0.90rem;
+        letter-spacing: -0.01em;
+    }
+    .scenario-subtitle {
+        font-weight: 600;
+        color: #A7B0AD;
+        font-size: 0.82rem;
+        margin-top: 4px;
+    }
+    .scenario-caption {
+        color: #707A77;
+        font-size: 0.74rem;
+        margin-top: 4px;
+        line-height: 1.35;
+    }
+
+    /* Semantic Status Indicators */
+    .status-dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        display: inline-block;
+        flex-shrink: 0;
+    }
+    .dot-act {
+        background-color: #22D3EE;
+    }
+    .dot-recovered {
+        background-color: #A78BFA;
+    }
+    .dot-approved {
+        background-color: #FBBF24;
+    }
+    .dot-escalate {
+        background-color: #FB923C;
+    }
+    .dot-refuse {
+        background-color: #FF5C5C;
+    }
+    .dot-muted {
+        background-color: #707A77;
     }
 
     /* Agent Decision Timeline Styles */
     .timeline-container {
         margin-top: 14px;
         margin-bottom: 18px;
-        background: #0f172a;
-        border: 1px solid #1e293b;
-        border-radius: 10px;
+        background: #0D1010;
+        border: 1px solid #242B2B;
+        border-radius: 8px;
         padding: 16px 18px;
     }
     .timeline-card {
-        background-color: #131c2e;
-        border: 1px solid #1e293b;
-        border-radius: 8px;
-        padding: 12px 16px;
+        background-color: #121616;
+        border: 1px solid #242B2B;
+        border-radius: 6px;
+        padding: 12px 14px;
         margin-bottom: 8px;
         transition: border-color 0.15s ease;
     }
     .timeline-card:hover {
-        border-color: #38bdf8;
+        border-color: #333C3C;
     }
     .timeline-card-completed {
-        border-left: 4px solid #10b981;
+        border-left: 3px solid #22D3EE;
     }
     .timeline-card-escalated {
-        border-left: 4px solid #f59e0b;
+        border-left: 3px solid #FB923C;
     }
     .timeline-card-blocked {
-        border-left: 4px solid #ef4444;
+        border-left: 3px solid #FF5C5C;
     }
     .timeline-pill {
         display: inline-block;
         font-size: 0.72rem;
-        font-weight: 700;
+        font-weight: 600;
         padding: 2px 8px;
         border-radius: 4px;
-        text-transform: uppercase;
-        letter-spacing: 0.04em;
+        letter-spacing: 0.02em;
     }
     .pill-completed {
-        background: rgba(16, 185, 129, 0.15);
-        color: #34d399;
-        border: 1px solid rgba(16, 185, 129, 0.3);
+        background: rgba(34, 211, 238, 0.12);
+        color: #22D3EE;
+        border: 1px solid rgba(34, 211, 238, 0.35);
     }
     .pill-escalated {
-        background: rgba(245, 158, 11, 0.15);
-        color: #fbbf24;
-        border: 1px solid rgba(245, 158, 11, 0.3);
+        background: rgba(251, 146, 60, 0.12);
+        color: #FB923C;
+        border: 1px solid rgba(251, 146, 60, 0.35);
     }
     .pill-blocked {
-        background: rgba(239, 68, 68, 0.15);
-        color: #f87171;
-        border: 1px solid rgba(239, 68, 68, 0.3);
+        background: rgba(255, 92, 92, 0.12);
+        color: #FF5C5C;
+        border: 1px solid rgba(255, 92, 92, 0.35);
     }
     .timeline-header {
         display: flex;
@@ -325,12 +405,12 @@ st.markdown("""
         align-items: center;
     }
     .timeline-title {
-        font-weight: 700;
-        font-size: 0.92rem;
-        color: #f8fafc;
+        font-weight: 600;
+        font-size: 0.90rem;
+        color: #F5F7F5;
     }
     .timeline-stage-num {
-        color: #94a3b8;
+        color: #707A77;
         font-size: 0.75rem;
         font-weight: 600;
         text-transform: uppercase;
@@ -339,16 +419,84 @@ st.markdown("""
     .timeline-content {
         margin-top: 5px;
         font-size: 0.85rem;
-        color: #cbd5e1;
+        color: #A7B0AD;
         line-height: 1.4;
     }
     .timeline-meta {
         margin-top: 6px;
         font-size: 0.78rem;
-        color: #94a3b8;
+        color: #707A77;
         display: flex;
         flex-wrap: wrap;
         gap: 14px;
+    }
+
+    /* Primary & Secondary Buttons - Enterprise Flat Minimal */
+    .stButton > button[kind="primary"],
+    .stButton > button[data-testid="baseButton-primary"] {
+        background-color: #121616 !important;
+        color: #39FF88 !important;
+        border: 1px solid #39FF88 !important;
+        font-weight: 600 !important;
+        font-size: 0.85rem !important;
+        border-radius: 4px !important;
+        padding: 6px 14px !important;
+        box-shadow: none !important;
+        transition: all 0.15s ease !important;
+    }
+    .stButton > button[kind="primary"]:hover,
+    .stButton > button[data-testid="baseButton-primary"]:hover {
+        background-color: #1F2626 !important;
+        border-color: #39FF88 !important;
+        color: #F5F7F5 !important;
+        box-shadow: none !important;
+    }
+    .stButton > button[kind="secondary"],
+    .stButton > button[data-testid="baseButton-secondary"] {
+        background-color: #121616 !important;
+        color: #F5F7F5 !important;
+        border: 1px solid #242B2B !important;
+        font-weight: 500 !important;
+        font-size: 0.82rem !important;
+        border-radius: 4px !important;
+        padding: 5px 12px !important;
+        box-shadow: none !important;
+        transition: all 0.15s ease !important;
+    }
+    .stButton > button[kind="secondary"]:hover,
+    .stButton > button[data-testid="baseButton-secondary"]:hover {
+        background-color: #171C1C !important;
+        border-color: #333C3C !important;
+        color: #39FF88 !important;
+        box-shadow: none !important;
+    }
+
+    /* Tabs Component Styling - Clean Enterprise Tab Bar */
+    .stTabs [data-baseweb="tab-list"] {
+        gap: 24px;
+        border-bottom: 1px solid #242B2B;
+        padding-bottom: 0px;
+        background: transparent;
+    }
+    .stTabs [data-baseweb="tab"] {
+        background-color: transparent !important;
+        color: #707A77 !important;
+        font-weight: 500 !important;
+        font-size: 0.88rem !important;
+        padding: 10px 2px !important;
+        border: none !important;
+        border-bottom: 2px solid transparent !important;
+        transition: color 0.15s ease, border-color 0.15s ease !important;
+    }
+    .stTabs [data-baseweb="tab"]:hover {
+        color: #A7B0AD !important;
+        background-color: transparent !important;
+    }
+    .stTabs [aria-selected="true"] {
+        color: #F5F7F5 !important;
+        font-weight: 600 !important;
+        border-bottom: 2px solid #39FF88 !important;
+        background-color: transparent !important;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -451,8 +599,8 @@ def render_agent_decision_timeline(result: Dict[str, Any]) -> None:
     if not result:
         return
 
-    st.markdown("#### ⏱️ Agent Decision Timeline")
-    st.caption("Visual end-to-end lifecycle trace of RecoverAI's autonomous recovery decision pipeline.")
+    st.markdown("#### Decision Pipeline Timeline")
+    st.caption("Visual end-to-end lifecycle trace of the recovery decision pipeline.")
 
     # 1. Dynamic Extraction from actual agent result
     txn_id = result.get("transaction_id", "Unknown")
@@ -468,11 +616,11 @@ def render_agent_decision_timeline(result: Dict[str, Any]) -> None:
 
     diagnosis = result.get("diagnosis") or "Failure pattern analyzed."
     diag_source = result.get("diagnosis_source", "heuristic")
-    diag_badge = "🧠 LLM Reasoning" if diag_source == "llm" else "⚙️ Heuristic Fallback"
+    diag_badge = "LLM Reasoning" if diag_source == "llm" else "Heuristic Fallback"
 
     rec_action = (result.get("recommended_action") or "no_action").upper()
     rec_source = result.get("recommendation_source", "heuristic")
-    rec_badge = "🧠 LLM Strategy" if rec_source == "llm" else "⚙️ Heuristic Fallback"
+    rec_badge = "LLM Strategy" if rec_source == "llm" else "Heuristic Fallback"
     rec_factors = result.get("recommendation_factors", [])
     rec_factors_str = ", ".join(rec_factors) if rec_factors else "Not available"
 
@@ -492,24 +640,24 @@ def render_agent_decision_timeline(result: Dict[str, Any]) -> None:
     # 2. Status & content logic for stages 5 and 6
     if decision == "ACT":
         s5_class = "timeline-card-completed"
-        s5_pill = '<span class="timeline-pill pill-completed">✓ Approved (ACT)</span>'
+        s5_pill = '<span class="timeline-pill pill-completed">Approved (ACT)</span>'
         s6_class = "timeline-card-completed"
-        s6_pill = f'<span class="timeline-pill pill-completed">✓ Executed ({action_status})</span>'
-        s6_content = f"Autonomous recovery action <b>{selected_action}</b> executed safely in Test Mode / Dry Run."
+        s6_pill = f'<span class="timeline-pill pill-completed">Executed ({action_status})</span>'
+        s6_content = f"Recovery action <b>{selected_action}</b> executed safely in Test Mode / Dry Run."
         s6_meta = f"<span>Action: <code>{selected_action}</code></span><span>Ref: <code>{action_ref}</code></span><span>Mode: <code>Dry Run</code></span>"
     elif decision == "ESCALATE":
         s5_class = "timeline-card-escalated"
-        s5_pill = '<span class="timeline-pill pill-escalated">⚠ Escalated (ESCALATE)</span>'
+        s5_pill = '<span class="timeline-pill pill-escalated">Escalated (ESCALATE)</span>'
         s6_class = "timeline-card-escalated"
-        s6_pill = '<span class="timeline-pill pill-escalated">⏳ Pending Approval</span>'
+        s6_pill = '<span class="timeline-pill pill-escalated">Pending Approval</span>'
         s6_content = "Automated execution safely halted. Transaction queued for Merchant Human-in-the-Loop review."
         s6_meta = "<span>Queue: <code>Merchant Approval Queue</code></span><span>Status: <code>PENDING_APPROVAL</code></span>"
     else:  # REFUSE
         s5_class = "timeline-card-blocked"
-        s5_pill = '<span class="timeline-pill pill-blocked">🛑 Blocked (REFUSE)</span>'
+        s5_pill = '<span class="timeline-pill pill-blocked">Blocked (REFUSE)</span>'
         s6_class = "timeline-card-blocked"
-        s6_pill = '<span class="timeline-pill pill-blocked">🛑 Action Refused</span>'
-        s6_content = "Autonomous recovery deliberately refused to protect merchant from chargebacks or spare action fee burn."
+        s6_pill = '<span class="timeline-pill pill-blocked">Action Refused</span>'
+        s6_content = "Recovery action deliberately refused to protect merchant from chargebacks or spare action fee burn."
         s6_meta = "<span>Actions Executed: <code>0</code></span><span>Action Cost Avoided: <code>Spared</code></span>"
 
     # 3. Build structured explanation breakdown for Stage 5 if available
@@ -539,7 +687,7 @@ def render_agent_decision_timeline(result: Dict[str, Any]) -> None:
             elif v == "ESCALATED":
                 c_pill = f'<span class="timeline-pill pill-escalated" style="margin-right:6px; margin-bottom:4px;">{label}: ESCALATED</span>'
             else:
-                c_pill = f'<span class="timeline-pill" style="margin-right:6px; margin-bottom:4px; background:#334155; color:#94a3b8;">{label}: {v}</span>'
+                c_pill = f'<span class="timeline-pill" style="margin-right:6px; margin-bottom:4px; background:#171C1C; color:#A7B0AD; border:1px solid #242B2B;">{label}: {v}</span>'
             check_pills.append(c_pill)
 
         pills_str = "".join(check_pills)
@@ -547,20 +695,20 @@ def render_agent_decision_timeline(result: Dict[str, Any]) -> None:
         is_open = "open" if decision != "ACT" else ""
 
         explanation_html = f"""
-        <details style="margin-top:10px; background:#0b1329; border:1px solid #1e293b; border-radius:6px; padding:8px 12px;" {is_open}>
-            <summary style="font-size:0.82rem; font-weight:700; color:#38bdf8; cursor:pointer;">
-                🛡️ Structured Decision Explanation & Policy Checks Breakdown
+        <details style="margin-top:10px; background:#080A0A; border:1px solid #242B2B; border-radius:6px; padding:8px 12px;" {is_open}>
+            <summary style="font-size:0.82rem; font-weight:700; color:#39FF88; cursor:pointer;">
+                Structured Decision Explanation & Policy Checks Breakdown
             </summary>
-            <div style="margin-top:8px; font-size:0.82rem; color:#cbd5e1;">
+            <div style="margin-top:8px; font-size:0.82rem; color:#A7B0AD;">
                 <div style="margin-bottom:6px;">
-                    <span style="color:#94a3b8;">Primary Decision Factor:</span> <code>{p_factor}</code>
+                    <span style="color:#707A77;">Primary Decision Factor:</span> <code>{p_factor}</code>
                 </div>
                 <div style="margin-bottom:8px;">
-                    <span style="color:#94a3b8;">Policy Checks:</span><br/>
+                    <span style="color:#707A77;">Policy Checks:</span><br/>
                     <div style="margin-top:4px; display:flex; flex-wrap:wrap;">{pills_str}</div>
                 </div>
                 <div>
-                    <span style="color:#94a3b8;">Evaluated Reasons:</span>
+                    <span style="color:#707A77;">Evaluated Reasons:</span>
                     <ul style="margin:4px 0 0 16px; padding:0; line-height:1.4;">
                         {reasons_html}
                     </ul>
@@ -574,43 +722,38 @@ def render_agent_decision_timeline(result: Dict[str, Any]) -> None:
         {
             "num": 1,
             "title": "Context Loaded",
-            "icon": "📥",
             "class": "timeline-card-completed",
-            "pill": '<span class="timeline-pill pill-completed">✓ Completed</span>',
+            "pill": '<span class="timeline-pill pill-completed">Completed</span>',
             "content": f"Ingested payment failure telemetry for transaction <code>{txn_id}</code>.",
             "meta": f"<span>Customer: <code>{customer_id}</code></span><span>Amount: <b>₹{amount:,.2f} {currency}</b></span><span>Reason: <code>{failure_reason}</code></span>"
         },
         {
             "num": 2,
             "title": "ML Recovery Prediction",
-            "icon": "📊",
             "class": "timeline-card-completed",
-            "pill": '<span class="timeline-pill pill-completed">✓ Completed</span>',
+            "pill": '<span class="timeline-pill pill-completed">Completed</span>',
             "content": f"Calibrated recovery probability estimated at <b>{prob_str}</b> (Expected Value: <b>{ev_str}</b>).",
             "meta": "<span>Model: <code>EXP_0 Logistic Regression</code></span><span>Cutoff Threshold: <code>&tau; = 0.35</code></span>"
         },
         {
             "num": 3,
             "title": "Failure Diagnosis",
-            "icon": "🔍",
             "class": "timeline-card-completed",
-            "pill": f'<span class="timeline-pill pill-completed">✓ Completed</span> &nbsp;<span class="badge-llm">{diag_badge}</span>' if diag_source == "llm" else f'<span class="timeline-pill pill-completed">✓ Completed</span> &nbsp;<span class="badge-heuristic">{diag_badge}</span>',
+            "pill": f'<span class="timeline-pill pill-completed">Completed</span> &nbsp;<span class="badge-llm">{diag_badge}</span>' if diag_source == "llm" else f'<span class="timeline-pill pill-completed">Completed</span> &nbsp;<span class="badge-heuristic">{diag_badge}</span>',
             "content": diagnosis,
             "meta": f"<span>Category: <code>{failure_category}</code></span><span>Diagnosis Source: <code>{diag_source.upper()}</code></span>"
         },
         {
             "num": 4,
             "title": "AI Strategy Recommendation",
-            "icon": "💡",
             "class": "timeline-card-completed",
-            "pill": f'<span class="timeline-pill pill-completed">✓ Completed</span> &nbsp;<span class="badge-llm">{rec_badge}</span>' if rec_source == "llm" else f'<span class="timeline-pill pill-completed">✓ Completed</span> &nbsp;<span class="badge-heuristic">{rec_badge}</span>',
+            "pill": f'<span class="timeline-pill pill-completed">Completed</span> &nbsp;<span class="badge-llm">{rec_badge}</span>' if rec_source == "llm" else f'<span class="timeline-pill pill-completed">Completed</span> &nbsp;<span class="badge-heuristic">{rec_badge}</span>',
             "content": f"Proposed recovery strategy: <b>{rec_action}</b>.",
             "meta": f"<span>Factors: <code>{rec_factors_str}</code></span><span>Strategy Source: <code>{rec_source.upper()}</code></span>"
         },
         {
             "num": 5,
             "title": "Deterministic Policy Guard",
-            "icon": "🛡️",
             "class": s5_class,
             "pill": s5_pill,
             "content": policy_reason + explanation_html,
@@ -619,7 +762,6 @@ def render_agent_decision_timeline(result: Dict[str, Any]) -> None:
         {
             "num": 6,
             "title": "Controlled Execution",
-            "icon": "⚡" if decision == "ACT" else ("👤" if decision == "ESCALATE" else "🛑"),
             "class": s6_class,
             "pill": s6_pill,
             "content": s6_content,
@@ -628,9 +770,8 @@ def render_agent_decision_timeline(result: Dict[str, Any]) -> None:
         {
             "num": 7,
             "title": "Audit Logging & State Persistence",
-            "icon": "📋",
             "class": "timeline-card-completed",
-            "pill": '<span class="timeline-pill pill-completed">✓ Completed</span>',
+            "pill": '<span class="timeline-pill pill-completed">Completed</span>',
             "content": "Full decision chain atomically recorded in database (<code>AuditLog</code> table).",
             "meta": f"<span>Agent Status: <code>{agent_status}</code></span><span>Timestamp: <code>{audit_ts[:19] if len(audit_ts)>=19 else audit_ts}</code></span>"
         }
@@ -643,7 +784,7 @@ def render_agent_decision_timeline(result: Dict[str, Any]) -> None:
             <div class="timeline-header">
                 <div>
                     <span class="timeline-stage-num">Stage {stage['num']}</span>
-                    <span class="timeline-title">{stage['icon']} {stage['title']}</span>
+                    <span class="timeline-title">{stage['title']}</span>
                 </div>
                 <div>{stage['pill']}</div>
             </div>
@@ -661,31 +802,70 @@ metrics = compute_live_top_metrics(model_mtime=model_mtime, csv_mtime=csv_mtime)
 # SIDEBAR NAVIGATION & SYSTEM TELEMETRY
 # -----------------------------------------------------------------------------
 with st.sidebar:
-    st.image("https://img.shields.io/badge/RecoverAI-Razorpay_Buildathon-blue?style=for-the-badge&logo=razorpay", use_container_width=True)
-    st.title("RecoverAI Command")
-    st.caption("Autonomous Revenue Recovery & FinTech Governance Engine")
-    
-    st.markdown("---")
-    st.subheader("⚙️ System Status")
+    st.markdown("""
+    <div style="padding:4px 0 8px 0;">
+        <div style="font-size:1.15rem; font-weight:700; color:#F5F7F5; letter-spacing:-0.02em;">RecoverAI</div>
+        <div style="font-size:0.78rem; color:#707A77; margin-top:2px;">Revenue Recovery & FinTech Governance</div>
+    </div>
+    <div style="border-top:1px solid #242B2B; margin:8px 0 12px 0;"></div>
+    """, unsafe_allow_html=True)
     
     # Engine status detection
-    llm_key = os.environ.get("OPENAI_API_KEY") or os.environ.get("ANTHROPIC_API_KEY")
-    has_real_llm = bool(llm_key and not llm_key.startswith("mock_") and not llm_key.startswith("your_"))
+    from agent.services.llm_service import is_llm_available
+    has_real_llm = is_llm_available()
+    diag_status = "Live LLM" if has_real_llm else "Fallback Mode"
     
-    st.markdown(f"**LLM Intelligence**: {'🧠 Live LLM (Active)' if has_real_llm else '⚙️ Deterministic Fallback'}")
     razorpay_status = is_razorpay_configured()
-    st.markdown(f"**Razorpay Integration**: {'✅ Live API Test Mode' if razorpay_status else '⚠️ Mock Sandbox'}")
-    st.markdown(f"**EV Threshold ($\\\\tau$)**: `0.35` *(EV-Optimal)*")
-    st.markdown(f"**High-Value Escalation**: `₹{HIGH_VALUE_TRANSACTION_THRESHOLD:,.2f}`")
+    razorpay_label = "Test Mode" if razorpay_status else "Mock Sandbox"
     
-    st.markdown("---")
-    st.markdown("### 🛡️ FinTech Safety Invariant")
-    st.info(
-        "**LLM Recommends.**\n"
-        "**Deterministic Policy Decides.**\n"
-        "**Human Approves Escalations.**\n\n"
-        "*Fraud & risk blocks can NEVER be overridden.*"
-    )
+    st.markdown(f"""
+    <div style="font-size:0.72rem; font-weight:700; color:#707A77; text-transform:uppercase; letter-spacing:0.06em; margin-bottom:8px;">
+        System Status
+    </div>
+    <div style="display:flex; flex-direction:column; gap:8px; font-size:0.80rem;">
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+            <span style="color:#A7B0AD;">Agent Pipeline</span>
+            <span style="color:#39FF88; font-weight:600;">Online</span>
+        </div>
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+            <span style="color:#A7B0AD;">Diagnosis Engine</span>
+            <span style="color:#F5F7F5; font-weight:600;">{diag_status}</span>
+        </div>
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+            <span style="color:#A7B0AD;">Policy Engine</span>
+            <span style="color:#39FF88; font-weight:600;">Active</span>
+        </div>
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+            <span style="color:#A7B0AD;">Razorpay Integration</span>
+            <span style="color:#F5F7F5; font-weight:600;">{razorpay_label}</span>
+        </div>
+    </div>
+    <div style="border-top:1px solid #242B2B; margin:14px 0 10px 0;"></div>
+    <div style="font-size:0.72rem; font-weight:700; color:#707A77; text-transform:uppercase; letter-spacing:0.06em; margin-bottom:8px;">
+        Parameters
+    </div>
+    <div style="display:flex; flex-direction:column; gap:8px; font-size:0.80rem;">
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+            <span style="color:#A7B0AD;">EV Threshold (&tau;)</span>
+            <span style="color:#F5F7F5; font-weight:600;">0.35</span>
+        </div>
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+            <span style="color:#A7B0AD;">High-Value Escalation</span>
+            <span style="color:#F5F7F5; font-weight:600;">₹{HIGH_VALUE_TRANSACTION_THRESHOLD:,.2f}</span>
+        </div>
+    </div>
+    <div style="border-top:1px solid #242B2B; margin:14px 0 12px 0;"></div>
+    <div style="font-size:0.72rem; font-weight:700; color:#707A77; text-transform:uppercase; letter-spacing:0.06em; margin-bottom:6px;">
+        Safety Invariant
+    </div>
+    <div style="background:#121616; border:1px solid #242B2B; border-radius:6px; padding:10px 12px; font-size:0.78rem; color:#A7B0AD; line-height:1.45;">
+        <div style="color:#F5F7F5; font-weight:600; margin-bottom:4px;">Governance Rules:</div>
+        1. LLM Recommends.<br/>
+        2. Deterministic Policy Decides.<br/>
+        3. Human Approves Escalations.<br/>
+        <span style="color:#FF5C5C; font-size:0.74rem; display:block; margin-top:6px;">Fraud and risk blocks cannot be overridden.</span>
+    </div>
+    """, unsafe_allow_html=True)
     
     st.markdown("---")
     st.caption("RecoverAI v2.4-prod | Buildathon Submission Build")
@@ -695,14 +875,14 @@ with st.sidebar:
 # -----------------------------------------------------------------------------
 header_col1, header_col2 = st.columns([3, 1])
 with header_col1:
-    st.title("💳 RecoverAI — Revenue Recovery Command Center")
-    st.markdown("**Autonomous Payment Recovery Agent with Expected-Value Optimization, Deterministic Policy Guardrails & Closed-Loop Webhook Settlement.**")
+    st.title("RecoverAI — Revenue Recovery Command Center")
+    st.markdown("**Predicts recovery probability, applies deterministic policy rules, and confirms settlement through verified webhooks.**")
 with header_col2:
     st.write("")
     st.markdown("""
-    <div style="background:#1e293b; border:1px solid #334155; border-radius:8px; padding:10px 14px; text-align:right;">
-        <span style="color:#94a3b8; font-size:0.75rem; font-weight:700; text-transform:uppercase;">Agent Mode</span><br/>
-        <span style="color:#10b981; font-weight:800; font-size:1.05rem;">● AUTONOMOUS ACTIVE</span>
+    <div style="background:#121616; border:1px solid #242B2B; border-radius:8px; padding:10px 14px; text-align:right;">
+        <span style="color:#707A77; font-size:0.75rem; font-weight:700; text-transform:uppercase;">Agent Status</span><br/>
+        <span style="color:#39FF88; font-weight:800; font-size:1.05rem;">ONLINE</span>
     </div>
     """, unsafe_allow_html=True)
 
@@ -710,11 +890,11 @@ with header_col2:
 # WORKSPACE TABS
 # -----------------------------------------------------------------------------
 tab_cmd, tab_sim, tab_trace, tab_approvals, tab_insights = st.tabs([
-    "🏠 Recovery Command Center",
-    "🎮 Demo Simulator (Buildathon)",
-    "🤖 Live Agent Decision Trace",
-    "👤 Merchant Approval Queue",
-    "📊 Recovery Insights & Governance"
+    "Recovery Command Center",
+    "Demo Simulator",
+    "Live Decision Trace",
+    "Merchant Approval Queue",
+    "Recovery Insights & Governance"
 ])
 
 # Initialize session state variables
@@ -762,9 +942,9 @@ with tab_cmd:
         
     with kpi_col2:
         st.markdown(f"""
-        <div class="metric-card-hero metric-card-green">
+        <div class="metric-card-hero metric-card-purple">
             <div class="metric-hero-label">Revenue Recovered</div>
-            <div class="metric-hero-val" style="color:#34d399;">₹{metrics['opt_recovered']:,.0f}</div>
+            <div class="metric-hero-val" style="color:#A78BFA;">₹{metrics['opt_recovered']:,.0f}</div>
             <div class="metric-hero-sub">Captured at EV-Optimal &tau; = 0.35</div>
         </div>
         """, unsafe_allow_html=True)
@@ -773,22 +953,22 @@ with tab_cmd:
         st.markdown(f"""
         <div class="metric-card-hero metric-card-green">
             <div class="metric-hero-label">Net Profit Uplift</div>
-            <div class="metric-hero-val" style="color:#10b981;">+₹{metrics['net_uplift_inr']:,.0f}</div>
+            <div class="metric-hero-val" style="color:#39FF88;">+₹{metrics['net_uplift_inr']:,.0f}</div>
             <div class="metric-hero-delta-green">+{metrics['net_uplift_pct']:.2f}% Net Growth</div>
         </div>
         """, unsafe_allow_html=True)
 
     with kpi_col4:
         st.markdown(f"""
-        <div class="metric-card-hero metric-card-purple">
+        <div class="metric-card-hero">
             <div class="metric-hero-label">Recovery Rate</div>
-            <div class="metric-hero-val" style="color:#c084fc;">{metrics['recovery_rate_pct']:.1f}%</div>
+            <div class="metric-hero-val">{metrics['recovery_rate_pct']:.1f}%</div>
             <div class="metric-hero-sub">Gross Risk Captured</div>
         </div>
         """, unsafe_allow_html=True)
 
     with kpi_col5:
-        badge_style = "color:#f59e0b;" if pending_count > 0 else "color:#10b981;"
+        badge_style = "color:#FB923C;" if pending_count > 0 else "color:#39FF88;"
         badge_text = f"{pending_count} Awaiting" if pending_count > 0 else "Queue Clear"
         st.markdown(f"""
         <div class="metric-card-hero {'metric-card-amber' if pending_count > 0 else ''}">
@@ -804,33 +984,33 @@ with tab_cmd:
     story_col1, story_col2 = st.columns([1.2, 1.8])
 
     with story_col1:
-        st.subheader("📈 Recovery Performance Story")
+        st.subheader("Recovery Performance Story")
         st.markdown(
             "Comparing baseline industry heuristic (**&tau; = 0.50**) vs. "
             "**RecoverAI EV-Optimized Policy (&tau; = 0.35)** on holdout evaluation data:"
         )
         
         comp_card_html = f"""
-        <div style="background:#131c2e; border:1px solid #1e293b; border-radius:8px; padding:14px; margin-bottom:12px;">
+        <div style="background:#121616; border:1px solid #242B2B; border-radius:8px; padding:14px; margin-bottom:12px;">
             <div style="display:flex; justify-content:space-between; margin-bottom:8px; font-size:0.85rem;">
-                <span style="color:#94a3b8;">Default Standard (0.50):</span>
-                <span style="font-weight:700; color:#f8fafc;">₹{metrics['default_recovered']:,.2f}</span>
+                <span style="color:#707A77;">Default Standard (0.50):</span>
+                <span style="font-weight:600; color:#A7B0AD;">₹{metrics['default_recovered']:,.2f}</span>
             </div>
             <div style="display:flex; justify-content:space-between; margin-bottom:8px; font-size:0.85rem;">
-                <span style="color:#38bdf8;">RecoverAI Optimized (0.35):</span>
-                <span style="font-weight:700; color:#38bdf8;">₹{metrics['opt_recovered']:,.2f}</span>
+                <span style="color:#A7B0AD;">RecoverAI Optimized (0.35):</span>
+                <span style="font-weight:600; color:#F5F7F5;">₹{metrics['opt_recovered']:,.2f}</span>
             </div>
-            <div style="border-top:1px solid #334155; padding-top:8px; display:flex; justify-content:space-between; font-size:0.92rem;">
-                <span style="color:#34d399; font-weight:700;">Net Merchant Profit Uplift:</span>
-                <span style="color:#34d399; font-weight:800;">+₹{metrics['net_uplift_inr']:,.2f} (+{metrics['net_uplift_pct']:.2f}%)</span>
+            <div style="border-top:1px solid #242B2B; padding-top:8px; display:flex; justify-content:space-between; font-size:0.88rem;">
+                <span style="color:#39FF88; font-weight:600;">Net Merchant Profit Uplift:</span>
+                <span style="color:#39FF88; font-weight:700;">+₹{metrics['net_uplift_inr']:,.2f} (+{metrics['net_uplift_pct']:.2f}%)</span>
             </div>
         </div>
         """
         st.markdown(comp_card_html, unsafe_allow_html=True)
-        st.caption("💡 *Expected Value Optimization mathematically proves that threshold 0.35 captures recoverable revenue without overspending on action costs.*")
+        st.caption("*Expected Value Optimization mathematically proves that threshold 0.35 captures recoverable revenue without overspending on action costs.*")
 
     with story_col2:
-        st.subheader("🎯 End-to-End Recovery Funnel")
+        st.subheader("End-to-End Recovery Funnel")
         st.markdown("Transaction lifecycle progression from failure ingestion to verified settlement:")
         
         fn1, fn2, fn3, fn4, fn5 = st.columns(5)
@@ -853,81 +1033,81 @@ with tab_cmd:
         with fn3:
             act_pct = (metrics['payments_selected'] / metrics['total_failed_count'] * 100) if metrics['total_failed_count'] > 0 else 0.0
             st.markdown(f"""
-            <div class="funnel-card" style="border-color:#3b82f6;">
+            <div class="funnel-card" style="border-color:#22D3EE;">
                 <div class="funnel-step-title">3. Policy ACT</div>
-                <div class="funnel-step-val" style="color:#60a5fa;">{metrics['payments_selected']}</div>
+                <div class="funnel-step-val" style="color:#22D3EE;">{metrics['payments_selected']}</div>
                 <div class="funnel-step-pct">{act_pct:.1f}% Passed</div>
             </div>
             """, unsafe_allow_html=True)
         with fn4:
             st.markdown("""
-            <div class="funnel-card" style="border-color:#10b981;">
+            <div class="funnel-card" style="border-color:#242B2B;">
                 <div class="funnel-step-title">4. Executed</div>
-                <div class="funnel-step-val" style="color:#34d399;">361</div>
+                <div class="funnel-step-val" style="color:#F5F7F5;">361</div>
                 <div class="funnel-step-pct">0 Double Hits</div>
             </div>
             """, unsafe_allow_html=True)
         with fn5:
             st.markdown("""
-            <div class="funnel-card" style="border-color:#047857; background:#064e3b;">
+            <div class="funnel-card" style="border-color:#A78BFA; background:#171C1C;">
                 <div class="funnel-step-title">5. Recovered</div>
-                <div class="funnel-step-val" style="color:#ffffff;">210</div>
-                <div class="funnel-step-pct" style="color:#a7f3d0;">58.2% Captured</div>
+                <div class="funnel-step-val" style="color:#F5F7F5;">210</div>
+                <div class="funnel-step-pct" style="color:#A78BFA;">58.2% Captured</div>
             </div>
             """, unsafe_allow_html=True)
         
         st.markdown(
-            "<div style='display:flex; justify-content:space-between; font-size:0.78rem; color:#94a3b8; padding:0 6px;'>"
-            "<span>🛡️ <b>240 Blocked</b> (Fraud / Negative EV)</span>"
-            "<span>👤 <b>32 Escalated</b> (High-Value HITL)</span>"
-            "<span>💰 <b>₹920,754 Recovered</b></span>"
+            "<div style='display:flex; justify-content:space-between; font-size:0.80rem; color:#A7B0AD; padding:2px 6px;'>"
+            "<span><b style='color:#FF5C5C;'>240 Blocked</b> (Fraud / Negative EV)</span>"
+            "<span><b style='color:#FB923C;'>32 Escalated</b> (High-Value HITL)</span>"
+            "<span><b style='color:#A78BFA;'>₹920,754 Recovered</b></span>"
             "</div>",
             unsafe_allow_html=True
         )
 
     st.markdown("---")
 
-    # 3. AI DECISIONS OVERVIEW & FAILURE CATEGORY INSIGHTS
+    # 3. DECISIONS OVERVIEW & FAILURE CATEGORY INSIGHTS
     dec_col, cat_col = st.columns(2)
     
     with dec_col:
-        st.subheader("🤖 AI Decision Distribution (Test Holdout N=633)")
+        st.subheader("Decision Distribution (Test Holdout N=633)")
         st.markdown("Policy Guard breakdown ensuring safe, cost-optimized recovery:")
         
         d_c1, d_c2 = st.columns(2)
         with d_c1:
             st.markdown("""
-            <div style="background:#0f172a; border-left:4px solid #10b981; padding:10px 14px; border-radius:6px; margin-bottom:8px;">
-                <span style="color:#34d399; font-weight:700; font-size:0.85rem;">🟢 AUTO RECOVERY (ACT)</span>
-                <div style="font-size:1.3rem; font-weight:800; color:#ffffff;">361 <span style="font-size:0.8rem; color:#94a3b8;">(57.0%)</span></div>
-                <span style="color:#64748b; font-size:0.75rem;">High P(Recovery), low fraud risk</span>
+            <div style="background:#121616; border:1px solid #242B2B; border-left:4px solid #22D3EE; padding:12px 14px; border-radius:6px; margin-bottom:10px;">
+                <span style="color:#22D3EE; font-weight:700; font-size:0.90rem; letter-spacing:0.02em;">AUTO RECOVERY (ACT)</span>
+                <div style="font-size:1.35rem; font-weight:800; color:#F5F7F5; margin:2px 0;">361 <span style="font-size:0.85rem; color:#A7B0AD; font-weight:600;">(57.0%)</span></div>
+                <span style="color:#707A77; font-size:0.80rem; font-weight:500;">High P(Recovery), low fraud risk</span>
             </div>
             """, unsafe_allow_html=True)
             st.markdown("""
-            <div style="background:#0f172a; border-left:4px solid #f59e0b; padding:10px 14px; border-radius:6px; margin-bottom:8px;">
-                <span style="color:#fde047; font-weight:700; font-size:0.85rem;">🟡 HUMAN REVIEW (ESCALATE)</span>
-                <div style="font-size:1.3rem; font-weight:800; color:#ffffff;">32 <span style="font-size:0.8rem; color:#94a3b8;">(5.1%)</span></div>
-                <span style="color:#64748b; font-size:0.75rem;">Amount > ₹8,500 threshold</span>
+            <div style="background:#121616; border:1px solid #242B2B; border-left:4px solid #FB923C; padding:12px 14px; border-radius:6px; margin-bottom:10px;">
+                <span style="color:#FB923C; font-weight:700; font-size:0.90rem; letter-spacing:0.02em;">HUMAN REVIEW (ESCALATE)</span>
+                <div style="font-size:1.35rem; font-weight:800; color:#F5F7F5; margin:2px 0;">32 <span style="font-size:0.85rem; color:#A7B0AD; font-weight:600;">(5.1%)</span></div>
+                <span style="color:#707A77; font-size:0.80rem; font-weight:500;">Amount > ₹8,500 threshold</span>
             </div>
             """, unsafe_allow_html=True)
         with d_c2:
             st.markdown("""
-            <div style="background:#0f172a; border-left:4px solid #ef4444; padding:10px 14px; border-radius:6px; margin-bottom:8px;">
-                <span style="color:#fca5a5; font-weight:700; font-size:0.85rem;">🔴 POLICY BLOCKED (REFUSE)</span>
-                <div style="font-size:1.3rem; font-weight:800; color:#ffffff;">48 <span style="font-size:0.8rem; color:#94a3b8;">(7.6%)</span></div>
-                <span style="color:#64748b; font-size:0.75rem;">Fraud / IP risk / permanent cards</span>
+            <div style="background:#121616; border:1px solid #242B2B; border-left:4px solid #FF5C5C; padding:12px 14px; border-radius:6px; margin-bottom:10px;">
+                <span style="color:#FF5C5C; font-weight:700; font-size:0.90rem; letter-spacing:0.02em;">POLICY BLOCKED (REFUSE)</span>
+                <div style="font-size:1.35rem; font-weight:800; color:#F5F7F5; margin:2px 0;">48 <span style="font-size:0.85rem; color:#A7B0AD; font-weight:600;">(7.6%)</span></div>
+                <span style="color:#707A77; font-size:0.80rem; font-weight:500;">Fraud / IP risk / permanent cards</span>
             </div>
             """, unsafe_allow_html=True)
             st.markdown("""
-            <div style="background:#0f172a; border-left:4px solid #64748b; padding:10px 14px; border-radius:6px; margin-bottom:8px;">
-                <span style="color:#cbd5e1; font-weight:700; font-size:0.85rem;">⚪ NO ACTION (NEGATIVE EV)</span>
-                <div style="font-size:1.3rem; font-weight:800; color:#ffffff;">192 <span style="font-size:0.8rem; color:#94a3b8;">(30.3%)</span></div>
-                <span style="color:#64748b; font-size:0.75rem;">P < 0.35, spares wasteful action fee</span>
+            <div style="background:#121616; border:1px solid #242B2B; border-left:4px solid #707A77; padding:12px 14px; border-radius:6px; margin-bottom:10px;">
+                <span style="color:#A7B0AD; font-weight:700; font-size:0.90rem; letter-spacing:0.02em;">NO ACTION (NEGATIVE EV)</span>
+                <div style="font-size:1.35rem; font-weight:800; color:#F5F7F5; margin:2px 0;">192 <span style="font-size:0.85rem; color:#A7B0AD; font-weight:600;">(30.3%)</span></div>
+                <span style="color:#707A77; font-size:0.80rem; font-weight:500;">P < 0.35, spares wasteful action fee</span>
             </div>
             """, unsafe_allow_html=True)
 
     with cat_col:
-        st.subheader("📊 Failure Category Distribution")
+        st.subheader("Failure Category Distribution")
         st.markdown("Top drivers of payment failure across transaction history:")
         
         cat_data = pd.DataFrame([
@@ -938,24 +1118,24 @@ with tab_cmd:
             {"Category": "Suspected Risk / Fraud", "Share": 5.1, "Recoverability": "Blocked (0%)"}
         ])
         st.dataframe(cat_data, use_container_width=True, hide_index=True)
-        st.caption("📌 *Derived from historical failed payment distributions in `data/raw/transactions.csv`.*")
+        st.caption("*Derived from historical failed payment distributions in `data/raw/transactions.csv`.*")
 
     st.markdown("---")
 
     # 4. ACTIVE RECOVERY ACTIVITY STREAM (PERSISTED DATABASE)
-    st.subheader("📋 Active Recovery Stream (Persisted Database Records)")
+    st.subheader("Active Recovery Stream (Persisted Database Records)")
     
     if recent_payments:
         for p in recent_payments:
-            badge_html = '<span class="badge-refuse">🔴 BLOCKED</span>'
+            badge_html = '<span class="badge-refuse">BLOCKED</span>'
             if p.status == "RECOVERED":
-                badge_html = '<span class="badge-recovered">💰 RECOVERED</span>'
+                badge_html = '<span class="badge-recovered">RECOVERED</span>'
             elif p.status == "AWAITING_APPROVAL":
-                badge_html = '<span class="badge-escalate">🟡 AWAITING APPROVAL</span>'
+                badge_html = '<span class="badge-escalate">AWAITING APPROVAL</span>'
             elif p.status == "COMPLETED":
-                badge_html = '<span class="badge-act">🟢 COMPLETED</span>'
+                badge_html = '<span class="badge-act">COMPLETED</span>'
             elif p.status == "REJECTED_BY_HUMAN":
-                badge_html = '<span class="badge-refuse">❌ REJECTED BY MERCHANT</span>'
+                badge_html = '<span class="badge-refuse">REJECTED BY MERCHANT</span>'
 
             ts_str = p.created_at.strftime("%Y-%m-%d %H:%M:%S") if p.created_at else "Just now"
             prob_str = f"{p.recovery_probability*100:.1f}%" if p.recovery_probability else "Evaluated"
@@ -964,10 +1144,10 @@ with tab_cmd:
                 st.markdown(f"""
                 <div class="activity-item">
                     <div>
-                        <div style="font-weight:700; font-size:1.0rem; color:#f8fafc;">
-                            Transaction <code>{p.id}</code> &nbsp;|&nbsp; <span style="color:#38bdf8;">₹{p.amount:,.2f} {p.currency}</span>
+                        <div style="font-weight:700; font-size:1.0rem; color:#F5F7F5;">
+                            Transaction <code>{p.id}</code> &nbsp;|&nbsp; <span style="color:#A7B0AD;">₹{p.amount:,.2f} {p.currency}</span>
                         </div>
-                        <div style="color:#94a3b8; font-size:0.85rem; margin-top:3px;">
+                        <div style="color:#707A77; font-size:0.85rem; margin-top:3px;">
                             Customer: <code>{p.customer_id}</code> &nbsp;•&nbsp; Reason: <b>{p.failure_reason or 'N/A'}</b> &nbsp;•&nbsp; Timestamp: {ts_str}
                         </div>
                     </div>
@@ -976,7 +1156,7 @@ with tab_cmd:
                     </div>
                 </div>
                 """, unsafe_allow_html=True)
-                with st.expander(f"🔍 Technical Inspection ({p.id})", expanded=False):
+                with st.expander(f"Technical Inspection ({p.id})", expanded=False):
                     st.json({
                         "transaction_id": p.id,
                         "merchant_id": p.merchant_id,
@@ -990,17 +1170,17 @@ with tab_cmd:
                         "created_at": ts_str
                     })
     else:
-        st.info("💡 **No live transactions recorded yet in this session.** Switch to the **🎮 Demo Simulator** tab to inject test failures and observe live recovery in action.")
+        st.info("No live transactions recorded yet in this session. Switch to the Demo Simulator tab to inject test failures and observe live recovery in action.")
 
 
 # =============================================================================
-# TAB 2: DEMO SIMULATOR (BUILDATHON 1-CLICK INTERACTIVE EXPERIENCE)
+# TAB 2: DEMO SIMULATOR
 # =============================================================================
 with tab_sim:
-    st.subheader("🎮 1-Click Razorpay Buildathon Demo Simulator")
+    st.subheader("Demo Simulator")
     st.markdown(
-        "Select a curated industry scenario below to trigger a live payment failure and watch RecoverAI's "
-        "autonomous multi-stage decision journey in real time."
+        "Select a curated industry scenario below to trigger a live payment failure and watch the "
+        "recovery decision pipeline execute in real time."
     )
 
     # 4 Scenario Selection Cards
@@ -1009,9 +1189,12 @@ with tab_sim:
         is_sel_a = (st.session_state["selected_scenario"] == "auto_recovery")
         st.markdown(f"""
         <div class="scenario-box {'scenario-box-active' if is_sel_a else ''}">
-            <div style="font-weight:800; color:#34d399; font-size:0.95rem;">🟢 Scenario A</div>
-            <div style="font-weight:700; color:#f8fafc; font-size:0.85rem; margin-top:2px;">Smart Auto-Recovery</div>
-            <div style="color:#94a3b8; font-size:0.75rem; margin-top:4px;">Transient timeout &rarr; High P &rarr; Auto-executes & settles</div>
+            <div style="display:flex; align-items:center; gap:7px;">
+                <span class="status-dot dot-act"></span>
+                <span class="scenario-title">Scenario A</span>
+            </div>
+            <div class="scenario-subtitle">Smart Auto-Recovery</div>
+            <div class="scenario-caption">Transient timeout &rarr; High P &rarr; Auto-executes & settles</div>
         </div>
         """, unsafe_allow_html=True)
         if st.button("Select Scenario A", key="btn_sc_a", use_container_width=True):
@@ -1022,9 +1205,12 @@ with tab_sim:
         is_sel_b = (st.session_state["selected_scenario"] == "human_approval")
         st.markdown(f"""
         <div class="scenario-box {'scenario-box-active' if is_sel_b else ''}">
-            <div style="font-weight:800; color:#fde047; font-size:0.95rem;">🟡 Scenario B</div>
-            <div style="font-weight:700; color:#f8fafc; font-size:0.85rem; margin-top:2px;">High-Value HITL Review</div>
-            <div style="color:#94a3b8; font-size:0.75rem; margin-top:4px;">₹14,500 > limit &rarr; Escalates to Merchant Queue</div>
+            <div style="display:flex; align-items:center; gap:7px;">
+                <span class="status-dot dot-escalate"></span>
+                <span class="scenario-title">Scenario B</span>
+            </div>
+            <div class="scenario-subtitle">High-Value HITL Review</div>
+            <div class="scenario-caption">₹14,500 > limit &rarr; Escalates to Merchant Queue</div>
         </div>
         """, unsafe_allow_html=True)
         if st.button("Select Scenario B", key="btn_sc_b", use_container_width=True):
@@ -1035,9 +1221,12 @@ with tab_sim:
         is_sel_c = (st.session_state["selected_scenario"] == "fraud_block")
         st.markdown(f"""
         <div class="scenario-box {'scenario-box-active' if is_sel_c else ''}">
-            <div style="font-weight:800; color:#fca5a5; font-size:0.95rem;">🔴 Scenario C</div>
-            <div style="font-weight:700; color:#f8fafc; font-size:0.85rem; margin-top:2px;">Fraud / Risk Block</div>
-            <div style="color:#94a3b8; font-size:0.75rem; margin-top:4px;">IP risk 0.92 &rarr; Policy blocks &rarr; Zero execution</div>
+            <div style="display:flex; align-items:center; gap:7px;">
+                <span class="status-dot dot-refuse"></span>
+                <span class="scenario-title">Scenario C</span>
+            </div>
+            <div class="scenario-subtitle">Fraud / Risk Block</div>
+            <div class="scenario-caption">IP risk 0.92 &rarr; Policy blocks &rarr; Zero execution</div>
         </div>
         """, unsafe_allow_html=True)
         if st.button("Select Scenario C", key="btn_sc_c", use_container_width=True):
@@ -1048,9 +1237,12 @@ with tab_sim:
         is_sel_d = (st.session_state["selected_scenario"] == "low_probability")
         st.markdown(f"""
         <div class="scenario-box {'scenario-box-active' if is_sel_d else ''}">
-            <div style="font-weight:800; color:#cbd5e1; font-size:0.95rem;">⚪ Scenario D</div>
-            <div style="font-weight:700; color:#f8fafc; font-size:0.85rem; margin-top:2px;">Negative EV Refusal</div>
-            <div style="color:#94a3b8; font-size:0.75rem; margin-top:4px;">P < 0.35 &rarr; Negative EV &rarr; Spares action fee</div>
+            <div style="display:flex; align-items:center; gap:7px;">
+                <span class="status-dot dot-muted"></span>
+                <span class="scenario-title">Scenario D</span>
+            </div>
+            <div class="scenario-subtitle">Negative EV Refusal</div>
+            <div class="scenario-caption">P < 0.35 &rarr; Negative EV &rarr; Spares action fee</div>
         </div>
         """, unsafe_allow_html=True)
         if st.button("Select Scenario D", key="btn_sc_d", use_container_width=True):
@@ -1064,25 +1256,25 @@ with tab_sim:
     
     # Active Scenario Card Details
     exp_decision = scen_meta.get("expected_decision", "ACT")
-    exp_badge_color = "#34d399" if exp_decision == "ACT" else ("#fde047" if exp_decision == "ESCALATE" else "#fca5a5")
+    exp_badge_color = "#22D3EE" if exp_decision == "ACT" else ("#FB923C" if exp_decision == "ESCALATE" else "#FF5C5C")
     
     st.markdown(f"""
-    <div style="background:#131c2e; border:1px solid #334155; border-radius:8px; padding:16px; margin-bottom:14px;">
+    <div style="background:#121616; border:1px solid #242B2B; border-radius:8px; padding:16px; margin-bottom:14px;">
         <div style="display:flex; justify-content:space-between; align-items:center;">
-            <span style="font-size:1.15rem; font-weight:800; color:#38bdf8;">
+            <span style="font-size:1.05rem; font-weight:700; color:#F5F7F5;">
                 {scen_meta['name']}
             </span>
-            <span style="color:#94a3b8; font-size:0.85rem;">
-                Target Policy: <span style="color:{exp_badge_color}; font-weight:800; padding:2px 8px; border:1px solid {exp_badge_color}; border-radius:4px;">{exp_decision}</span> &nbsp;|&nbsp; Action: <code>{scen_meta['expected_action'].upper()}</code>
+            <span style="color:#A7B0AD; font-size:0.85rem;">
+                Target Policy: <span style="color:{exp_badge_color}; font-weight:700; padding:2px 8px; border:1px solid {exp_badge_color}; border-radius:4px;">{exp_decision}</span> &nbsp;|&nbsp; Action: <code>{scen_meta['expected_action'].upper()}</code>
             </span>
         </div>
-        <div style="color:#cbd5e1; font-size:0.90rem; margin-top:6px;">
+        <div style="color:#A7B0AD; font-size:0.90rem; margin-top:6px;">
             {scen_meta['description']}
         </div>
-        <div style="margin-top:10px; padding:8px 12px; background:#0b0f19; border-radius:6px; font-size:0.82rem; color:#94a3b8; display:flex; justify-content:space-between;">
-            <span>📋 <b>Reason:</b> <code>{scen_meta['failure_reason']}</code></span>
-            <span>🏷️ <b>Category:</b> <code>{scen_meta['failure_category']}</code></span>
-            <span>💡 <b>Demo Theme:</b> {scen_meta.get('business_title', 'Revenue Recovery')}</span>
+        <div style="margin-top:10px; padding:8px 12px; background:#080A0A; border-radius:6px; border:1px solid #242B2B; font-size:0.82rem; color:#707A77; display:flex; justify-content:space-between;">
+            <span><b>Reason:</b> <code>{scen_meta['failure_reason']}</code></span>
+            <span><b>Category:</b> <code>{scen_meta['failure_category']}</code></span>
+            <span><b>Context:</b> {scen_meta.get('business_title', 'Revenue Recovery')}</span>
         </div>
     </div>
     """, unsafe_allow_html=True)
@@ -1106,16 +1298,16 @@ with tab_sim:
 
     btn_col1, btn_col2 = st.columns([3, 1])
     with btn_col1:
-        run_sim = st.button("🚨 SIMULATE PAYMENT FAILURE & RUN AGENT", type="primary", use_container_width=True)
+        run_sim = st.button("Simulate Payment Failure & Run Agent", type="primary", use_container_width=True)
     with btn_col2:
-        reset_sim = st.button("🔄 Reset / Replay", use_container_width=True, help="Clears recent simulation state for a clean re-run")
+        reset_sim = st.button("Reset / Replay", use_container_width=True, help="Clears recent simulation state for a clean re-run")
         if reset_sim:
             st.session_state["latest_result"] = None
             st.session_state["latest_timeline"] = None
             st.rerun()
 
     if run_sim:
-        with st.spinner("⚡ Ingesting failed payment & executing RecoverAI Autonomous Agent Pipeline..."):
+        with st.spinner("Ingesting failed payment and executing recovery decision pipeline..."):
             txn_id = f"demo_{current_scen_key[:4]}_{uuid.uuid4().hex[:6]}"
             
             # Build transaction dictionary
@@ -1215,31 +1407,31 @@ with tab_sim:
         # Deterministic verification check
         act_decision = res.get("policy_decision")
         is_matched = bool(act_decision == scen_meta.get("expected_decision"))
-        match_html = '<span style="color:#10b981; font-weight:800;">✓ Scenario Verification: PASSED (Policy Match)</span>' if is_matched else '<span style="color:#ef4444; font-weight:800;">✗ Policy Mismatch</span>'
+        match_html = '<span style="color:#39FF88; font-weight:700;">PASSED — Policy Match</span>' if is_matched else '<span style="color:#FF5C5C; font-weight:700;">MISMATCH — Policy Divergence</span>'
 
         st.markdown(f"""
-        <div style="background:#0f172a; border:1px solid #1e293b; border-left:6px solid {'#10b981' if is_matched else '#ef4444'}; border-radius:8px; padding:14px; margin-top:14px;">
+        <div style="background:#121616; border:1px solid #242B2B; border-left:4px solid {'#39FF88' if is_matched else '#FF5C5C'}; border-radius:8px; padding:14px; margin-top:14px;">
             <div style="display:flex; justify-content:space-between; align-items:center;">
-                <span style="font-size:1.0rem; font-weight:700; color:#f8fafc;">
+                <span style="font-size:0.95rem; font-weight:700; color:#F5F7F5;">
                     Simulation Outcome for <code>{res['transaction_id']}</code>
                 </span>
                 <span>{match_html}</span>
             </div>
             <div style="margin-top:8px; display:grid; grid-template-columns: 1fr 1fr 1fr; gap:12px; font-size:0.85rem;">
-                <div style="background:#131c2e; padding:8px 12px; border-radius:6px;">
-                    <span style="color:#94a3b8;">Expected Policy:</span><br/>
-                    <b style="color:{exp_badge_color}; font-size:1.05rem;">{scen_meta.get('expected_decision')}</b>
+                <div style="background:#080A0A; padding:8px 12px; border-radius:6px; border:1px solid #242B2B;">
+                    <span style="color:#707A77;">Expected Policy:</span><br/>
+                    <b style="color:{exp_badge_color}; font-size:1.0rem;">{scen_meta.get('expected_decision')}</b>
                 </div>
-                <div style="background:#131c2e; padding:8px 12px; border-radius:6px;">
-                    <span style="color:#94a3b8;">Actual Policy:</span><br/>
-                    <b style="color:{'#34d399' if act_decision=='ACT' else ('#fde047' if act_decision=='ESCALATE' else '#fca5a5')}; font-size:1.05rem;">{act_decision}</b>
+                <div style="background:#080A0A; padding:8px 12px; border-radius:6px; border:1px solid #242B2B;">
+                    <span style="color:#707A77;">Actual Policy:</span><br/>
+                    <b style="color:{'#22D3EE' if act_decision=='ACT' else ('#FB923C' if act_decision=='ESCALATE' else '#FF5C5C')}; font-size:1.0rem;">{act_decision}</b>
                 </div>
-                <div style="background:#131c2e; padding:8px 12px; border-radius:6px;">
-                    <span style="color:#94a3b8;">P(Recovery) / EV:</span><br/>
-                    <b style="color:#38bdf8; font-size:1.05rem;">{res.get('recovery_probability', 0.0)*100:.1f}% / ₹{res.get('expected_recovery_value', 0.0):,.2f}</b>
+                <div style="background:#080A0A; padding:8px 12px; border-radius:6px; border:1px solid #242B2B;">
+                    <span style="color:#707A77;">P(Recovery) / EV:</span><br/>
+                    <b style="color:#F5F7F5; font-size:1.0rem;">{res.get('recovery_probability', 0.0)*100:.1f}% / ₹{res.get('expected_recovery_value', 0.0):,.2f}</b>
                 </div>
             </div>
-            <div style="margin-top:10px; padding:10px 12px; background:#1e293b; border-radius:6px; font-size:0.88rem; color:#cbd5e1;">
+            <div style="margin-top:10px; padding:10px 12px; background:#080A0A; border-radius:6px; border:1px solid #242B2B; font-size:0.85rem; color:#A7B0AD;">
                 <b>{scen_meta.get('business_title', 'Business Impact')}:</b> {scen_meta.get('business_impact', 'Action completed according to deterministic policy rules.')}
             </div>
         </div>
@@ -1249,9 +1441,9 @@ with tab_sim:
         render_agent_decision_timeline(res)
 
         if act_decision == "ESCALATE":
-            st.info("👉 **Action Required:** Transaction has been routed to **👤 Merchant Approval Queue**. Switch to Tab 4 to review, approve, or reject.")
+            st.info("Action Required: Transaction has been routed to Merchant Approval Queue. Switch to Tab 4 to review, approve, or reject.")
         else:
-            st.info("👉 Switch to **🤖 Live Agent Decision Trace** (Tab 3) to view the deep JSON telemetry breakdown.")
+            st.info("Switch to Live Decision Trace (Tab 3) to view the deep JSON telemetry breakdown.")
     elif st.session_state.get("latest_result"):
         # Display existing simulation result and timeline if already processed in session
         render_agent_decision_timeline(st.session_state["latest_result"])
@@ -1261,14 +1453,14 @@ with tab_sim:
 # TAB 3: LIVE AGENT DECISION TRACE (7-STAGE VISUAL PIPELINE)
 # =============================================================================
 with tab_trace:
-    st.subheader("🤖 Live Agent Decision Trace")
+    st.subheader("Live Decision Trace")
     st.caption("Real-time inspection of RecoverAI's multi-stage reasoning, prediction, deterministic safety, and webhook verification.")
 
     res = st.session_state.get("latest_result")
     timeline = st.session_state.get("latest_timeline")
 
     if not res or not timeline:
-        st.info("💡 **No transaction has been simulated yet in this session.** Click **🚨 SIMULATE PAYMENT FAILURE** in the **🎮 Demo Simulator** tab to watch the live decision journey.")
+        st.info("No transaction has been simulated yet in this session. Click Simulate Payment Failure & Run Agent in the Demo Simulator tab to inspect the decision journey.")
     else:
         # Decision Banner
         decision = res.get("policy_decision")
@@ -1276,13 +1468,13 @@ with tab_trace:
         source_diag = res.get("diagnosis_source", "heuristic")
         source_rec = res.get("recommendation_source", "heuristic")
 
-        status_color = "#10b981" if decision == "ACT" else ("#f59e0b" if decision == "ESCALATE" else "#ef4444")
+        status_color = "#22D3EE" if decision == "ACT" else ("#FB923C" if decision == "ESCALATE" else "#FF5C5C")
         st.markdown(f"""
-        <div style="background-color:#1e293b; border-left: 6px solid {status_color}; padding:14px 18px; border-radius:6px; margin-bottom:18px;">
-            <div style="font-size:1.15rem; font-weight:800; color:#f8fafc;">
+        <div style="background-color:#121616; border:1px solid #242B2B; border-left: 4px solid {status_color}; padding:14px 18px; border-radius:6px; margin-bottom:18px;">
+            <div style="font-size:1.15rem; font-weight:800; color:#F5F7F5;">
                 Transaction <code>{res.get('transaction_id')}</code> — Policy Verdict: <span style="color:{status_color};">{decision}</span>
             </div>
-            <div style="color:#cbd5e1; font-size:0.88rem; margin-top:4px;">
+            <div style="color:#A7B0AD; font-size:0.88rem; margin-top:4px;">
                 Amount: <b>₹{amt:,.2f}</b> &nbsp;|&nbsp; 
                 Failure Reason: <b>{res.get('failure_reason')}</b> &nbsp;|&nbsp; 
                 ML Recovery Prob: <b>{res.get('recovery_probability', 0.0)*100:.1f}%</b> &nbsp;|&nbsp; 
@@ -1295,7 +1487,7 @@ with tab_trace:
         render_agent_decision_timeline(res)
 
         st.markdown("---")
-        st.markdown("#### 🔬 Detailed Telemetry & Step Breakdown")
+        st.markdown("#### Detailed Telemetry & Step Breakdown")
 
         # 7-STAGE PIPELINE CARDS
         for step in timeline:
@@ -1312,24 +1504,24 @@ with tab_trace:
                 st.markdown(f"""
                 <div class="{step_class}">
                     <div style="display:flex; justify-content:space-between; align-items:center;">
-                        <span style="font-size:1.05rem; font-weight:700; color:#f8fafc;">
-                            {step['icon']} Step {step['step_number']}: {step['title']}
+                        <span style="font-size:1.05rem; font-weight:700; color:#F5F7F5;">
+                            Step {step['step_number']}: {step['title']}
                         </span>
                     </div>
-                    <div style="color:#cbd5e1; font-size:0.92rem; margin-top:6px;">
+                    <div style="color:#A7B0AD; font-size:0.92rem; margin-top:6px;">
                         {step['summary']}
                     </div>
                 </div>
                 """, unsafe_allow_html=True)
-                with st.expander(f"🔍 Observable Telemetry & Metrics (Step {step['step_number']})", expanded=(step['step_number'] in [3, 4, 5])):
+                with st.expander(f"Observable Telemetry & Metrics (Step {step['step_number']})", expanded=(step['step_number'] in [3, 4, 5])):
                     st.json(step["details"])
 
         # Manual Webhook Settlement Simulator
         if res.get("policy_decision") == "ACT" and res.get("agent_status") != "RECOVERED":
             st.markdown("---")
-            st.markdown("### ⚡ Live Webhook Simulator (Close the Recovery Loop)")
+            st.markdown("### Live Webhook Simulator (Close Recovery Loop)")
             st.write("Simulate customer clicking the recovery payment link and completing payment via Razorpay.")
-            if st.button("💳 Simulate Customer Paid Webhook Event (Close Loop)", type="primary"):
+            if st.button("Simulate Customer Payment Webhook (Close Loop)", type="primary"):
                 db = SessionLocal()
                 try:
                     plink_id = f"plink_demo_{res['transaction_id'][-6:]}"
@@ -1371,7 +1563,7 @@ with tab_trace:
                     res["money_recovered"] = res["amount"]
                     res["agent_status"] = "RECOVERED"
                     st.session_state["latest_result"] = res
-                    st.success(f"🎉 Webhook processed successfully! Transaction is now marked **💰 RECOVERED** (₹{res['amount']:,.2f}).")
+                    st.success(f"Webhook processed successfully. Transaction marked RECOVERED (₹{res['amount']:,.2f}).")
                     st.rerun()
                 finally:
                     db.close()
@@ -1381,7 +1573,7 @@ with tab_trace:
 # TAB 4: MERCHANT APPROVAL QUEUE (HUMAN-IN-THE-LOOP GOVERNANCE)
 # =============================================================================
 with tab_approvals:
-    st.subheader("👤 Merchant Approval Queue (Human-in-the-Loop)")
+    st.subheader("Merchant Approval Queue (Human-in-the-Loop)")
     st.markdown("High-value payments and policy-escalated recovery actions are held in this queue until authorized by a merchant administrator.")
 
     db = SessionLocal()
@@ -1391,33 +1583,33 @@ with tab_approvals:
         db.close()
 
     if not pending_items:
-        st.success("✅ **Approval Queue is Clear!** No transactions currently require merchant review.")
-        st.info("💡 To test the human approval workflow, switch to the **🎮 Demo Simulator** tab and launch **Scenario B (High-Value Human Approval)**.")
+        st.success("Approval queue is clear. No transactions currently require merchant review.")
+        st.info("To test the human approval workflow, switch to the Demo Simulator tab and launch Scenario B (High-Value HITL Review).")
     else:
-        st.warning(f"⚠️ **{len(pending_items)} high-value transaction(s) requiring merchant decision.**")
+        st.warning(f"{len(pending_items)} high-value transaction(s) requiring merchant decision.")
         
         for item in pending_items:
             with st.container():
                 st.markdown(f"""
-                <div style="background-color:#1e293b; border:1px solid #334155; border-radius:8px; padding:16px; margin-bottom:16px;">
+                <div style="background-color:#121616; border:1px solid #242B2B; border-radius:8px; padding:16px; margin-bottom:16px;">
                     <div style="display:flex; justify-content:space-between; align-items:center;">
-                        <span style="font-size:1.15rem; font-weight:800; color:#f8fafc;">
+                        <span style="font-size:1.05rem; font-weight:700; color:#F5F7F5;">
                             Transaction <code>{item.transaction_id}</code>
                         </span>
                         <span class="badge-escalate">PENDING APPROVAL</span>
                     </div>
-                    <div style="margin-top:8px; color:#cbd5e1; font-size:0.95rem;">
-                        <strong>Amount</strong>: <span style="color:#38bdf8; font-weight:700;">₹{item.amount:,.2f} {item.currency}</span> &nbsp;|&nbsp;
+                    <div style="margin-top:8px; color:#A7B0AD; font-size:0.92rem;">
+                        <strong>Amount</strong>: <span style="color:#F5F7F5; font-weight:700;">₹{item.amount:,.2f} {item.currency}</span> &nbsp;|&nbsp;
                         <strong>Customer</strong>: <code>{item.customer_id}</code> &nbsp;|&nbsp;
                         <strong>Failure Reason</strong>: <code>{item.failure_reason}</code>
                     </div>
-                    <div style="margin-top:6px; color:#94a3b8; font-size:0.90rem;">
+                    <div style="margin-top:6px; color:#707A77; font-size:0.85rem;">
                         <strong>ML Recovery Prob</strong>: <b>{item.recovery_probability*100:.1f}%</b> &nbsp;|&nbsp;
                         <strong>Recommended Action</strong>: <code>{item.recommended_action.upper()}</code> &nbsp;|&nbsp;
                         <strong>Policy Reason</strong>: {item.policy_reason}
                     </div>
-                    <div style="margin-top:8px; background-color:#0f172a; padding:10px; border-radius:6px; font-size:0.85rem; color:#cbd5e1;">
-                        💡 <strong>Decision Rationale</strong>: {getattr(item, 'recommendation_reason', None) or 'High expected value on reconnecting high-value account.'}
+                    <div style="margin-top:8px; background-color:#080A0A; border:1px solid #242B2B; padding:10px; border-radius:6px; font-size:0.82rem; color:#A7B0AD;">
+                        <strong>Decision Rationale</strong>: {getattr(item, 'recommendation_reason', None) or 'High expected value on reconnecting high-value account.'}
                     </div>
                 </div>
                 """, unsafe_allow_html=True)
@@ -1425,25 +1617,25 @@ with tab_approvals:
                 act_col1, act_col2, _ = st.columns([1.5, 1.5, 4])
                 
                 with act_col1:
-                    if st.button(f"✓ APPROVE RECOVERY", key=f"app_{item.transaction_id}", type="primary"):
+                    if st.button("Approve Recovery Action", key=f"app_{item.transaction_id}", type="primary"):
                         db = SessionLocal()
                         try:
                             ok, code, rec_res = approve_recovery_action(
                                 db=db,
                                 transaction_id=item.transaction_id,
-                                human_notes=f"Authorized via Streamlit HITL Dashboard"
+                                human_notes="Authorized via Streamlit HITL Dashboard"
                             )
                             if ok:
-                                st.success(f"✅ Approved transaction `{item.transaction_id}`! Recovery action safely executed.")
+                                st.success(f"Approved transaction `{item.transaction_id}`. Recovery action safely executed.")
                                 time.sleep(1)
                                 st.rerun()
                             else:
-                                st.error(f"❌ Approval failed: {rec_res.get('message', code)} ({code})")
+                                st.error(f"Approval failed: {rec_res.get('message', code)} ({code})")
                         finally:
                             db.close()
 
                 with act_col2:
-                    if st.button(f"✗ REJECT RECOVERY", key=f"rej_{item.transaction_id}"):
+                    if st.button("Reject Recovery Action", key=f"rej_{item.transaction_id}"):
                         db = SessionLocal()
                         try:
                             ok, code, rej_res = reject_recovery_action(
@@ -1452,7 +1644,7 @@ with tab_approvals:
                                 human_notes="Rejected via Streamlit HITL Dashboard"
                             )
                             if ok:
-                                st.warning(f"❌ Transaction `{item.transaction_id}` rejected. Zero recovery actions executed.")
+                                st.warning(f"Transaction `{item.transaction_id}` rejected. Zero recovery actions executed.")
                                 time.sleep(1)
                                 st.rerun()
                             else:
@@ -1461,18 +1653,18 @@ with tab_approvals:
                             db.close()
 
     st.markdown("---")
-    st.caption("🛡️ **FinTech Safety Invariant**: Fraud or risk-related blocked payments can NEVER be approved or executed via this interface.")
+    st.caption("FinTech Safety Invariant: Fraud or risk-related blocked payments can never be approved or executed via this interface.")
 
 
 # =============================================================================
 # TAB 5: RECOVERY INSIGHTS & GOVERNANCE
 # =============================================================================
 with tab_insights:
-    st.subheader("📊 Recovery Insights, Calibration & Data Health")
+    st.subheader("Recovery Insights, Calibration & Data Health")
 
     in_c1, in_c2 = st.columns(2)
     with in_c1:
-        st.markdown("### 📈 Policy Threshold Comparison")
+        st.markdown("### Policy Threshold Comparison")
         st.write("Comparison between default industry threshold ($\\\\tau = 0.50$) vs. RecoverAI EV-Optimized threshold ($\\\\tau = 0.35$):")
         comp_df = pd.DataFrame([
             {"Policy": "Default Industry Standard (0.50)", "Recovered Revenue": f"₹{metrics['default_recovered']:,.2f}", "Action Cost": f"₹{metrics['default_cost']:,.2f}", "Net Profit": f"₹{metrics['default_net']:,.2f}"},
@@ -1482,7 +1674,7 @@ with tab_insights:
         st.dataframe(comp_df, use_container_width=True, hide_index=True)
 
     with in_c2:
-        st.markdown("### 🔍 Population Stability Index (PSI) Drift Monitor")
+        st.markdown("### Population Stability Index (PSI) Drift Monitor")
         drift_report = run_drift_report(test_df, persist=False)
         st.metric("System Data Health Status", drift_report["system_status"].upper())
         st.write(f"Significant Drift Count: **{drift_report['significant_drift_count']}** | Moderate Drift Count: **{drift_report['moderate_drift_count']}**")
@@ -1490,19 +1682,216 @@ with tab_insights:
             st.dataframe(pd.DataFrame(drift_report["features"]), use_container_width=True, hide_index=True)
 
     st.markdown("---")
-    st.markdown("### 📄 Immutable Telemetry Trail (`logs/decision_audit.jsonl`)")
+    st.markdown("### Immutable Audit Trail")
+    st.caption("Decision records captured for traceability and governance. Source: `logs/decision_audit.jsonl`")
+
     audit_log_path = os.path.join(PROJECT_ROOT, "logs", "decision_audit.jsonl")
     if os.path.exists(audit_log_path):
         records = []
         with open(audit_log_path, "r", encoding="utf-8") as f:
-            for line in reversed(f.readlines()[-20:]):
-                try:
-                    records.append(json.loads(line))
-                except Exception:
-                    pass
+            for line in reversed(f.readlines()):
+                line_str = line.strip()
+                if line_str:
+                    try:
+                        records.append(json.loads(line_str))
+                    except Exception:
+                        pass
+        
         if records:
-            st.json(records[:3])
-            st.caption(f"Showing 3 most recent audit events out of {len(records)} loaded.")
+            total_records = len(records)
+            act_count = sum(1 for r in records if r.get("safety", {}).get("decision") == "ACT")
+            esc_count = sum(1 for r in records if r.get("safety", {}).get("decision") == "ESCALATE")
+            ref_count = sum(1 for r in records if r.get("safety", {}).get("decision") == "REFUSE")
+
+            summary_cols = st.columns([1, 1, 1, 1])
+            with summary_cols[0]:
+                st.markdown(f"""
+                <div style="background:#121616; border:1px solid #242B2B; border-radius:6px; padding:10px 14px;">
+                    <div style="color:#707A77; font-size:0.75rem; text-transform:uppercase; font-weight:600;">Total Audit Records</div>
+                    <div style="color:#F5F7F5; font-size:1.25rem; font-weight:700; margin-top:2px;">{total_records}</div>
+                </div>
+                """, unsafe_allow_html=True)
+            with summary_cols[1]:
+                st.markdown(f"""
+                <div style="background:#121616; border:1px solid #242B2B; border-left:3px solid #22D3EE; border-radius:6px; padding:10px 14px;">
+                    <div style="color:#707A77; font-size:0.75rem; text-transform:uppercase; font-weight:600;">Policy ACT</div>
+                    <div style="color:#22D3EE; font-size:1.25rem; font-weight:700; margin-top:2px;">{act_count}</div>
+                </div>
+                """, unsafe_allow_html=True)
+            with summary_cols[2]:
+                st.markdown(f"""
+                <div style="background:#121616; border:1px solid #242B2B; border-left:3px solid #FB923C; border-radius:6px; padding:10px 14px;">
+                    <div style="color:#707A77; font-size:0.75rem; text-transform:uppercase; font-weight:600;">Escalated (HITL)</div>
+                    <div style="color:#FB923C; font-size:1.25rem; font-weight:700; margin-top:2px;">{esc_count}</div>
+                </div>
+                """, unsafe_allow_html=True)
+            with summary_cols[3]:
+                st.markdown(f"""
+                <div style="background:#121616; border:1px solid #242B2B; border-left:3px solid #FF5C5C; border-radius:6px; padding:10px 14px;">
+                    <div style="color:#707A77; font-size:0.75rem; text-transform:uppercase; font-weight:600;">Policy Blocked</div>
+                    <div style="color:#FF5C5C; font-size:1.25rem; font-weight:700; margin-top:2px;">{ref_count}</div>
+                </div>
+                """, unsafe_allow_html=True)
+
+            st.write("")
+
+            filter_col1, filter_col2 = st.columns([2, 3])
+            with filter_col1:
+                display_limit = st.selectbox(
+                    "Records to display:",
+                    options=[5, 10, 20, 50],
+                    index=1,
+                    key="audit_display_limit"
+                )
+            with filter_col2:
+                decision_filter = st.selectbox(
+                    "Filter by Policy Outcome:",
+                    options=["ALL", "ACT", "ESCALATE", "REFUSE"],
+                    index=0,
+                    key="audit_decision_filter"
+                )
+
+            filtered_records = records
+            if decision_filter != "ALL":
+                filtered_records = [r for r in records if r.get("safety", {}).get("decision") == decision_filter]
+
+            visible_records = filtered_records[:display_limit]
+            st.caption(f"Displaying {len(visible_records)} of {len(filtered_records)} matching audit records (ordered chronologically, newest first):")
+
+            for record in visible_records:
+                txn_id = record.get("transaction_id", "N/A")
+                ts = record.get("timestamp", "N/A")
+                cust_id = record.get("customer_id", "N/A")
+                amt = record.get("amount", 0.0)
+
+                pred = record.get("prediction", {}) or {}
+                prob = pred.get("recovery_probability", 0.0)
+                model_type = pred.get("model_type", "EXP_0 Logistic Regression")
+                exp_id = pred.get("experiment_id", "EXP_0")
+                explanation = pred.get("explanation", "Prediction generated by recovery model.")
+                pos_signals = pred.get("top_positive_signals", []) or []
+                neg_signals = pred.get("top_negative_signals", []) or []
+
+                bp = record.get("business_policy", {}) or {}
+                tau = bp.get("threshold", 0.35)
+                rec_action = bp.get("recommended_action", "none")
+                action_cost = bp.get("action_cost", 0.0)
+                gross_ev = bp.get("expected_gross_recovery_value", 0.0)
+
+                safety = record.get("safety", {}) or {}
+                decision = safety.get("decision", "REFUSE")
+                justification = safety.get("justification", "Evaluated against deterministic policy guardrails.")
+                triggered_rules = safety.get("triggered_rules", [])
+
+                execution = record.get("execution", {}) or {}
+                exec_status = execution.get("execution_status", "NOT_EXECUTED")
+                dry_run = execution.get("dry_run", True)
+                ref_id = execution.get("reference_id") or "N/A"
+                blocking_reason = execution.get("blocking_reason") or "None"
+
+                status_color = "#22D3EE" if decision == "ACT" else ("#FB923C" if decision == "ESCALATE" else "#FF5C5C")
+
+                with st.container():
+                    st.markdown(f"""
+                    <div style="background:#121616; border:1px solid #242B2B; border-left:4px solid {status_color}; border-radius:6px; padding:12px 16px; margin-bottom:6px;">
+                        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
+                            <div>
+                                <span style="font-weight:700; color:#F5F7F5; font-size:0.95rem;">Transaction <code>{txn_id}</code></span>
+                                <span style="color:#707A77; font-size:0.80rem; margin-left:12px;">{ts}</span>
+                            </div>
+                            <div style="display:flex; align-items:center; gap:8px;">
+                                <span style="font-size:0.80rem; font-weight:700; color:{status_color}; padding:2px 8px; border:1px solid {status_color}; border-radius:4px;">{decision}</span>
+                                <span style="font-size:0.75rem; color:#A7B0AD; background:#080A0A; border:1px solid #242B2B; padding:2px 6px; border-radius:4px;">{exec_status}</span>
+                            </div>
+                        </div>
+                        <div style="margin-top:8px; display:grid; grid-template-columns: repeat(4, 1fr); gap:10px; font-size:0.82rem;">
+                            <div><span style="color:#707A77;">Customer:</span> <code style="color:#A7B0AD;">{cust_id}</code></div>
+                            <div><span style="color:#707A77;">Amount:</span> <b style="color:#F5F7F5;">₹{amt:,.2f}</b></div>
+                            <div><span style="color:#707A77;">P(Recovery):</span> <b style="color:#F5F7F5;">{prob*100:.1f}%</b></div>
+                            <div><span style="color:#707A77;">Recommended:</span> <code style="color:#A7B0AD;">{rec_action.upper()}</code></div>
+                        </div>
+                    </div>
+                    """, unsafe_allow_html=True)
+
+                    with st.expander(f"Inspect Record — {txn_id}", expanded=False):
+                        c1, c2, c3 = st.columns(3)
+                        with c1:
+                            st.markdown("""
+                            <div style="font-size:0.75rem; font-weight:700; color:#707A77; text-transform:uppercase; margin-bottom:6px;">
+                                Prediction & Model Evidence
+                            </div>
+                            """, unsafe_allow_html=True)
+                            st.markdown(f"""
+                            <div style="background:#080A0A; border:1px solid #242B2B; border-radius:6px; padding:10px; font-size:0.80rem; color:#A7B0AD;">
+                                <div><span style="color:#707A77;">Model:</span> <b style="color:#F5F7F5;">{model_type} ({exp_id})</b></div>
+                                <div style="margin-top:4px;"><span style="color:#707A77;">Calibrated Probability:</span> <b style="color:#F5F7F5;">{prob*100:.2f}%</b></div>
+                                <div style="margin-top:4px;"><span style="color:#707A77;">Expected Gross Value:</span> <b style="color:#F5F7F5;">₹{gross_ev:,.2f}</b></div>
+                                <div style="margin-top:4px;"><span style="color:#707A77;">Decision Cutoff (&tau;):</span> <code>{tau}</code></div>
+                            </div>
+                            """, unsafe_allow_html=True)
+
+                        with c2:
+                            st.markdown("""
+                            <div style="font-size:0.75rem; font-weight:700; color:#707A77; text-transform:uppercase; margin-bottom:6px;">
+                                Policy Guard Verdict
+                            </div>
+                            """, unsafe_allow_html=True)
+                            st.markdown(f"""
+                            <div style="background:#080A0A; border:1px solid #242B2B; border-radius:6px; padding:10px; font-size:0.80rem; color:#A7B0AD;">
+                                <div><span style="color:#707A77;">Decision:</span> <b style="color:{status_color};">{decision}</b></div>
+                                <div style="margin-top:4px;"><span style="color:#707A77;">Action Cost:</span> <b style="color:#F5F7F5;">₹{action_cost:,.2f}</b></div>
+                                <div style="margin-top:4px;"><span style="color:#707A77;">Triggered Rules:</span> <code style="color:#A7B0AD;">{', '.join(triggered_rules) if triggered_rules else 'None (Clean Pass)'}</code></div>
+                                <div style="margin-top:4px;"><span style="color:#707A77;">Authority:</span> <b style="color:#F5F7F5;">Deterministic Policy Engine</b></div>
+                            </div>
+                            """, unsafe_allow_html=True)
+
+                        with c3:
+                            st.markdown("""
+                            <div style="font-size:0.75rem; font-weight:700; color:#707A77; text-transform:uppercase; margin-bottom:6px;">
+                                Execution & Telemetry State
+                            </div>
+                            """, unsafe_allow_html=True)
+                            st.markdown(f"""
+                            <div style="background:#080A0A; border:1px solid #242B2B; border-radius:6px; padding:10px; font-size:0.80rem; color:#A7B0AD;">
+                                <div><span style="color:#707A77;">Status:</span> <b style="color:#F5F7F5;">{exec_status}</b></div>
+                                <div style="margin-top:4px;"><span style="color:#707A77;">Execution Mode:</span> <code>{'Dry Run' if dry_run else 'Live Test'}</code></div>
+                                <div style="margin-top:4px;"><span style="color:#707A77;">Reference ID:</span> <code>{ref_id}</code></div>
+                                <div style="margin-top:4px;"><span style="color:#707A77;">Blocking Reason:</span> <span style="color:#A7B0AD;">{blocking_reason}</span></div>
+                            </div>
+                            """, unsafe_allow_html=True)
+
+                        st.markdown(f"""
+                        <div style="margin-top:8px; background:#080A0A; border:1px solid #242B2B; border-radius:6px; padding:10px 12px; font-size:0.82rem; color:#A7B0AD;">
+                            <div style="color:#707A77; font-size:0.75rem; font-weight:700; text-transform:uppercase; margin-bottom:4px;">Policy Justification</div>
+                            {justification}
+                        </div>
+                        """, unsafe_allow_html=True)
+
+                        if pos_signals or neg_signals:
+                            sig_col1, sig_col2 = st.columns(2)
+                            with sig_col1:
+                                if pos_signals:
+                                    st.markdown("""
+                                    <div style="font-size:0.75rem; font-weight:600; color:#39FF88; margin-top:6px; margin-bottom:4px;">
+                                        Top Positive Signals
+                                    </div>
+                                    """, unsafe_allow_html=True)
+                                    pos_df = pd.DataFrame(pos_signals)
+                                    st.dataframe(pos_df, use_container_width=True, hide_index=True)
+                            with sig_col2:
+                                if neg_signals:
+                                    st.markdown("""
+                                    <div style="font-size:0.75rem; font-weight:600; color:#FF5C5C; margin-top:6px; margin-bottom:4px;">
+                                        Top Negative Signals
+                                    </div>
+                                    """, unsafe_allow_html=True)
+                                    neg_df = pd.DataFrame(neg_signals)
+                                    st.dataframe(neg_df, use_container_width=True, hide_index=True)
+
+                        with st.expander("View Raw Audit Record (JSON)", expanded=False):
+                            st.json(record)
+                    
+                    st.write("")
         else:
             st.write("Audit log is currently empty.")
     else:
