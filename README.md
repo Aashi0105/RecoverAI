@@ -1,6 +1,6 @@
 # RecoverAI — AI Revenue Recovery Agent
 
-A policy-gated revenue recovery engine for e-commerce and subscription merchants. RecoverAI combines machine learning recovery scoring, Expected Value decision optimization, structured LLM failure diagnosis, deterministic safety controls, human approval workflows, and webhook-verified settlement.
+Failed payments cost online merchants revenue, but blindly retrying every failure wastes gateway fees and customer goodwill. RecoverAI predicts recovery probability for each failed payment and intervenes only when expected recovery exceeds action cost. The language model diagnoses failure patterns, but hard deterministic policy rules govern whether any payment action is actually executed.
 
 ---
 
@@ -16,17 +16,11 @@ A policy-gated revenue recovery engine for e-commerce and subscription merchants
 
 ## The Problem
 
-When a payment fails during checkout or recurring billing, merchants typically face two bad choices:
+When a payment fails during checkout or subscription renewal, merchants usually fall back on two crude approaches: blind retries or manual review. Retrying every failed card burns gateway fees on permanent errors like expired cards, quickly exhausts bank retry limits, and irritates customers. Manual follow-up is too slow, so dropped checkouts quietly turn into permanent customer churn.
 
-1. **Blind scheduled retries**: Retrying every failed payment regardless of failure cause burns gateway fees on permanent errors (e.g. invalid cards), exhausts customer retry limits, and annoys users.
-2. **Manual follow-up**: Operations teams can rarely review failed payments in real time, leading to cart abandonment and involuntary churn.
+Existing recovery tools often introduce problems of their own. Unchecked automation can trigger unauthorized retries on large orders. Blindly resubmitting transactions flagged for high velocity or suspicious IPs drives up chargeback rates. And systems that count payment-link creation as "recovered revenue" report phantom income before any money has actually cleared.
 
-In addition, standard recovery systems suffer from three specific flaws:
-* **Unconstrained automation**: Allowing an automated system or language model to trigger payment actions on high-value orders without merchant approval creates financial risk.
-* **Fraud vulnerability**: Retrying transactions that failed due to risk or suspicious velocity increases chargeback exposure.
-* **Phantom revenue accounting**: Systems that treat payment-link creation as "recovered revenue" overstate performance before the customer has actually completed payment.
-
-RecoverAI frames recovery as an optimization problem: estimate the probability of recovery for a specific failure, calculate whether an intervention has positive expected value after action fees, enforce strict safety rules before dispatching any payment action, and confirm settlement through webhooks.
+RecoverAI treats recovery as an optimization problem. The system estimates the probability of recovery for a specific failure, checks whether an intervention produces positive expected value after action costs, evaluates hard safety rules, and marks revenue recovered only after a verified webhook confirms settlement.
 
 ---
 
@@ -86,29 +80,27 @@ The system architecture follows a clear separation of responsibility:
 ML predicts → LLM recommends → Deterministic policy decides → Human reviews escalations → Webhooks confirm settlement
 ```
 
-* **ML predicts**: A calibrated classifier estimates recovery probability based on historical features.
-* **LLM recommends**: A language model diagnoses failure causes and proposes recovery tactics. It has no direct tool-execution access.
-* **Policy decides**: A deterministic policy engine applies non-overridable business rules. If a rule fails, the action is blocked regardless of what the LLM suggested.
-* **Humans review escalations**: High-value transactions ($\ge ₹8,500$) and boundary cases pause for merchant review in an approval queue.
-* **Webhooks confirm settlement**: Transactions are only marked recovered upon receiving a cryptographically verified webhook from Razorpay.
+A calibrated machine learning classifier estimates recovery probability from historical transaction features. Next, a language model analyzes failure telemetry to diagnose the root cause and propose recovery tactics, operating strictly as an advisor with no payment API credentials. A deterministic policy engine then evaluates non-overridable business rules. If a safety rule fails, execution halts immediately regardless of what the language model recommended.
+
+Transactions involving high values (>= ₹8,500) or borderline model confidence pause in a merchant approval queue for human review. Finally, no transaction is treated as recovered simply because a payment link was generated. The loop closes only when a cryptographically verified Razorpay webhook confirms payment settlement.
 
 ---
 
 ## Verified Offline Evaluation
 
-Evaluated on the 15% holdout test dataset ($N = 633$ failed payments, stratified split, `random_state=42`):
+Evaluated on the 15% holdout test dataset (N = 633 failed payments, stratified split, `random_state=42`):
 
-| Metric | Reference Threshold ($\tau = 0.50$) | RecoverAI EV-Optimal ($\tau = 0.35$) | Net Business Improvement ($\Delta$) |
+| Metric | Reference Threshold (τ = 0.50) | RecoverAI EV-Optimal (τ = 0.35) | Net Business Improvement (Δ) |
 | :--- | :---: | :---: | :---: |
 | **Total Revenue at Risk** | ₹1,579,773.01 | ₹1,579,773.01 | Total evaluatable failed transaction volume |
-| **Interventions Selected** | 485 transactions ($76.6\%$) | **521 transactions ($82.3\%$)** | $+36$ additional recoverable orders captured |
-| **Gross Recovered Revenue** | ₹889,907.57 | **₹920,754.44** | **$+₹30,846.87$ gross revenue uplift** |
-| **Action Costs Incurred** | ₹4,117.00 | **₹4,189.00** | $+₹72.00$ incremental action cost |
-| **Realized Net Recovery Value** | ₹885,790.57 | **₹916,565.44** | **$+₹30,774.87$ net value uplift (+1.95%)** |
-| **Gross Risk Capture Rate** | 56.3% | **58.3%** | $+2.0\%$ absolute recovery capture |
+| **Interventions Selected** | 485 transactions (76.6%) | **521 transactions (82.3%)** | +36 additional recoverable orders captured |
+| **Gross Recovered Revenue** | ₹889,907.57 | **₹920,754.44** | **+₹30,846.87 gross revenue uplift** |
+| **Action Costs Incurred** | ₹4,117.00 | **₹4,189.00** | +₹72.00 incremental action cost |
+| **Realized Net Recovery Value** | ₹885,790.57 | **₹916,565.44** | **+₹30,774.87 net value uplift (+1.95%)** |
+| **Gross Risk Capture Rate** | 56.3% | **58.3%** | +2.0% absolute recovery capture |
 | **Model Calibration** | Logistic Regression | EXP_0 Baseline Pipeline | Evaluated on holdout data |
 
-> **Evaluation Methodology Note**: These figures are generated from offline holdout evaluation and Expected Value analysis on synthetic transaction logs (`data/raw/transactions.csv`). They represent modeled recovery outcomes based on simulated interventions and historical conversion distributions, not live merchant revenue results.
+> Evaluation Methodology Note: These figures are generated from offline holdout evaluation and Expected Value analysis on synthetic transaction logs (`data/raw/transactions.csv`). They represent modeled recovery outcomes based on simulated interventions and historical conversion distributions, not live merchant revenue results.
 
 ---
 
@@ -120,72 +112,56 @@ The recovery decision uses an Expected Value (EV) calculation:
 
 $$\text{EV} = P(\text{recovery}) \times \text{Amount} - \text{Action Cost}$$
 
-Action costs reflect actual communication and gateway overhead (e.g. ₹5 for a payment link, ₹2 for a reminder, ₹0 for no action). By sweeping candidate thresholds $\tau$ across the development split, $\tau = 0.35$ was selected because it maximizes net recovery value: capturing borderline transactions where the payment amount justifies the small action cost.
+Action costs reflect communication and gateway fees: ₹5 for a payment link, ₹2 for a reminder, and ₹0 when no action is taken. Sweeping candidate thresholds across the development split identified τ = 0.35 as the point maximizing net recovery value. It captures borderline transactions where the order size comfortably offsets the small intervention cost.
 
 #### Model Architecture and Artifact Roles
 
-The repository maintains two serialized scikit-learn pipeline artifacts:
+Two serialized scikit-learn pipelines serve distinct roles in the codebase:
 
-* **Production Runtime Model (`ml/models/recovery_model.joblib`)**:
-  - **Inputs**: 31 approved features (amount, transaction history, customer success rate, failure streaks, IP risk, velocity scores, payment method, failure reason, and category).
-  - **Pipeline**: `ColumnTransformer` with `StandardScaler` for numeric columns and `OneHotEncoder(handle_unknown="ignore")` for categoricals, followed by a calibrated `LogisticRegression`.
-  - **Usage**: Powers the live LangGraph agent (`agent/nodes/prediction.py`), the REST API (`/api/v1/recovery`), and the demo simulator in the Streamlit dashboard.
-* **Reference Baseline Model (`ml/models/experiments/exp_0_baseline.joblib`)**:
-  - **Inputs**: 5 core features (`amount`, `hour`, `day_of_week`, `payment_method`, `failure_reason`).
-  - **Pipeline**: Minimal `ColumnTransformer` and `LogisticRegression`.
-  - **Usage**: Serves as the fixed reference baseline for offline Expected Value threshold optimization curves (`evaluation/business_metrics.py`), sensitivity stress tests (`evaluation/sensitivity_analysis.py`), and the macro KPI card in the Streamlit dashboard.
+Production runtime model (`ml/models/recovery_model.joblib`)
+Trained on 31 approved features spanning transaction amount, customer success rates, failure streaks, IP risk, velocity scores, and failure category codes. The pipeline applies standard scaling to numeric fields and one-hot encoding to categoricals before passing them to a calibrated Logistic Regression. This artifact powers live agent execution in LangGraph (`agent/nodes/prediction.py`), the backend REST API (`/api/v1/recovery`), and the interactive Streamlit simulator.
+
+Reference baseline model (`ml/models/experiments/exp_0_baseline.joblib`)
+A simpler 5-feature baseline using amount, hour, day of week, payment method, and failure reason. This model serves as the fixed benchmark for offline Expected Value threshold curves (`evaluation/business_metrics.py`), sensitivity stress testing, and the comparison cards in the dashboard.
 
 ### Dual-Mode Diagnosis & Fallback
 
-The diagnosis layer supports two execution modes:
+The diagnosis layer supports two execution paths depending on environment configuration.
 
-* **LLM Mode**: When an API key is configured (`OPENAI_API_KEY` or `GROQ_API_KEY`), context is passed to the language model with strict Pydantic output schemas (`RecoveryDiagnosis`, `RecoveryRecommendation`). The model outputs root-cause explanations and suggested tactics.
-* **Deterministic Fallback Mode**: If the API key is absent, times out, or returns a rate limit (HTTP 429), the node falls back to deterministic rule-based heuristics without halting the pipeline.
+When an API key is present (`OPENAI_API_KEY` or `GROQ_API_KEY`), sanitized context goes to the language model with strict Pydantic validation schemas (`RecoveryDiagnosis` and `RecoveryRecommendation`). The model outputs failure categorizations and recommended recovery tactics.
 
-The language model has no tool-calling access to payment APIs. Its output is purely advisory to the policy layer.
+If API credentials are unset, or if requests fail due to timeouts or HTTP 429 rate limits, the system falls back immediately to deterministic rule-based heuristics. In either case, the language model has no tool-calling access to payment gateways; its output serves purely as structured advisory input to the policy layer.
 
 ### Deterministic Policy Guard
 
-The policy guard (`agent/nodes/policy.py`) evaluates all transactions against deterministic rules before any action executes:
+Before any payment action can proceed, the policy guard in `agent/nodes/policy.py` checks the transaction against three outcomes:
 
-1. **REFUSE (Action Blocked)**:
-   - Suspected fraud or risk failure (`failure_category == "risk_related"`, `failure_reason == "suspected_risk"`, or `ip_risk_score > 0.70`).
-   - Permanent instrument failure (`invalid_card`, `card_expired`).
-   - Failure streak limit (`consecutive_failure_streak >= 4`).
-   - Sub-threshold probability ($P(\text{recovery}) < 0.35$).
-2. **ESCALATE (Paused for Human Review)**:
-   - High-value order ($\text{amount} \ge ₹8,500$).
-   - Model uncertainty band ($0.32 \le P(\text{recovery}) \le 0.38$).
-   - Risk velocity warning (`velocity_score > 0.65` and `ip_risk_score > 0.50`).
-3. **ACT (Approved for Execution)**:
-   - Transaction passes all refusal and escalation checks.
+Refusal (REFUSE)
+Blocks recovery immediately if the failure indicates fraud (`failure_category == "risk_related"`, `failure_reason == "suspected_risk"`, or `ip_risk_score > 0.70`), permanent instrument failure (`invalid_card` or `card_expired`), excessive consecutive failures (`consecutive_failure_streak >= 4`), or sub-threshold probability (P(recovery) < 0.35). Hard fraud blocks cannot be overridden.
 
-Fraud and permanent instrument blocks cannot be overridden through the approval queue.
+Escalation (ESCALATE)
+Halts automated processing and queues the transaction for merchant review when the order amount is high (amount >= ₹8,500), when model probability falls within the uncertainty band (0.32 <= P(recovery) <= 0.38), or when velocity and IP risk trigger a combined warning (`velocity_score > 0.65` and `ip_risk_score > 0.50`).
+
+Approval (ACT)
+Authorizes recovery action dispatch only when all refusal and escalation checks pass.
 
 ### Human-in-the-Loop Review
 
-Transactions that trigger an `ESCALATE` decision are written to the `approval_requests` database table with status `PENDING_APPROVAL`. 
+Transactions flagged with an ESCALATE decision are written to the `approval_requests` database table with status `PENDING_APPROVAL`.
 
-* **Merchant Queue**: Operators review the order in the dashboard with access to the ML score, failure diagnosis, and triggered policy rules.
-* **Concurrency Control**: Approvals use thread locks and database status checks. If two operators review the same transaction concurrently, the first resolution locks the state; the second attempt receives an HTTP 409 Conflict.
-* **Terminal Rejection**: If rejected, the transaction enters `REJECTED_BY_MERCHANT` and zero payment actions are executed.
+Merchants can inspect pending items in the dashboard, reviewing the estimated recovery probability, diagnosis notes, and specific triggered policy conditions. Approvals use thread locking alongside database state verification; if two operators resolve the same transaction concurrently, the first resolution locks the record, while the second request receives an HTTP 409 Conflict. When an operator rejects a transaction, it enters `REJECTED_BY_MERCHANT` as a terminal state with zero payment calls.
 
 ### Razorpay Settlement Verification
 
-RecoverAI separates action initiation from recovery confirmation:
+RecoverAI separates recovery dispatch from settlement confirmation.
 
-1. **Payment Link Dispatch**: When `ACT` is approved, the executor calls Razorpay's Test API to create a payment link. The database claim status is set to `PROCESSING`.
-2. **Webhook Ingestion**: When the customer pays, Razorpay sends a `payment_link.paid` webhook to `/api/v1/webhooks/razorpay`.
-3. **Cryptographic Validation**: The handler validates the signature against the webhook secret using `hmac.new(secret, raw_body, hashlib.sha256).hexdigest()`. Invalid signatures return HTTP 400.
-4. **State Transition**: Only upon valid webhook receipt is the payment status updated to `RECOVERED`. This prevents payment-link creation from being counted as recovered revenue before settlement confirmation.
+When an ACT decision is cleared, the execution service creates a payment link via Razorpay's Test API and records an atomic database claim in `PROCESSING` state. Later, when the customer completes payment, Razorpay dispatches a `payment_link.paid` webhook event to `/api/v1/webhooks/razorpay`.
+
+The webhook handler computes the HMAC-SHA256 digest of the raw request payload using the configured secret and compares it to the `X-Razorpay-Signature` header, rejecting mismatches with HTTP 400. Only when signature verification succeeds does the transaction status transition to `RECOVERED`. This accounting boundary prevents links that are sent but never paid from inflating recovery metrics.
 
 ### Defensive PII Redaction
 
-Before any payload is serialized into an LLM prompt (`agent/services/pii_redaction.py`):
-* A deep copy of the context dictionary is created so the internal state is never mutated.
-* Direct identity keys (`customer_email`, `customer_name`, `phone_number`, `address`) are stripped.
-* Unstructured text fields are scanned with regex to mask email addresses (`[REDACTED_EMAIL]`), phone numbers (`[REDACTED_PHONE]`), and card PANs (`[REDACTED_CARD]`).
-* Operational telemetry needed for diagnosis (`transaction_id`, `amount`, `failure_reason`, risk scores) is preserved.
+Before any context dictionary is serialized into an LLM prompt (`agent/services/pii_redaction.py`), the redaction service creates an isolated deep copy so the application state remains unmodified. Direct identity keys like customer names, emails, phone numbers, and addresses are scrubbed. Free-form text fields (such as gateway error messages) are scanned with regular expressions to mask email addresses (`[REDACTED_EMAIL]`), phone numbers (`[REDACTED_PHONE]`), and card PANs (`[REDACTED_CARD]`), while preserving operational telemetry needed for diagnosis.
 
 ---
 
@@ -196,9 +172,9 @@ The repository includes four pre-configured scenarios (`backend/routes/demo.py`)
 | Scenario | Name | Context & Signals | Expected Policy | Outcome |
 | :--- | :--- | :--- | :---: | :--- |
 | **Scenario A** | Smart Auto-Recovery | Network timeout, ₹2,500, high historical success rate, IP risk 0.04 | `ACT` | Payment link created; settles to `RECOVERED` on webhook |
-| **Scenario B** | High-Value Approval | Network timeout, ₹14,500 ($\ge ₹8,500$ limit), IP risk 0.05 | `ESCALATE` | Enters merchant approval queue; requires human confirmation |
+| **Scenario B** | High-Value Approval | Network timeout, ₹14,500 (>= ₹8,500 limit), IP risk 0.05 | `ESCALATE` | Enters merchant approval queue; requires human confirmation |
 | **Scenario C** | Fraud Block | Suspected risk, ₹7,500, IP risk 0.92, velocity 0.85 | `REFUSE` | Hard block; no payment link; prohibited from approval queue |
-| **Scenario D** | Low Probability Refusal | Bank decline, ₹3,200, Netbanking Axis, 0% historical success, velocity 0.85 | `REFUSE` | Blocked ($P < 0.35$); avoids spending action fee on unrecoverable payment |
+| **Scenario D** | Low Probability Refusal | Bank decline, ₹3,200, Netbanking Axis, 0% historical success, velocity 0.85 | `REFUSE` | Blocked (P < 0.35); avoids spending action fee on unrecoverable payment |
 
 ---
 
@@ -219,11 +195,15 @@ The repository includes four pre-configured scenarios (`backend/routes/demo.py`)
 
 ## Design Decisions & Trade-offs
 
-1. **Separation of Recovery from Settlement**: Early prototypes marked payments as recovered upon successful generation of a payment link. Testing revealed this created phantom revenue when customers ignored links. The architecture was decoupled so payments only transition to `RECOVERED` after a verified `payment_link.paid` webhook arrives.
-2. **LLM as Advisor, Not Controller**: Letting language models directly invoke payment APIs introduces hallucination risks on error handling. The LLM was restricted to structured failure diagnosis, placing all execution behind the deterministic policy layer.
-3. **Idempotency Locking**: Rapid webhook retries or concurrent clicks can trigger duplicate payment links. RecoverAI uses database primary key constraints on `idempotency_key` combined with process-level thread locks, ensuring duplicate requests return the existing claim.
-4. **Resilient Heuristic Fallbacks**: External LLM calls occasionally experience network timeouts or rate limits (HTTP 429). The system implements heuristic fallback routines so recovery evaluation continues uninterrupted even when external AI providers fail.
-5. **Threshold Tuning**: Evaluating threshold sweeps on development data demonstrated that the default 0.50 cutoff left ₹30,846.87 in recoverable revenue unattempted. Lowering $\tau$ to 0.35 captured these transactions with an incremental action cost of only ₹72.00.
+1. Payment links are never counted as recovered revenue. Early in development, generating a link was treated as a recovery event, but that produced phantom revenue whenever customers ignored the link. Decoupling action execution from settlement confirmation—requiring a signed `payment_link.paid` webhook to mark an order recovered—resolved this discrepancy.
+
+2. Language models should diagnose, not execute. Letting an LLM trigger payment APIs directly is fragile during outages or boundary errors. We restricted the model to emitting structured diagnosis schemas, placing all dispatch authority behind a deterministic policy guard.
+
+3. Idempotency combines thread locks with database constraints. Duplicate webhook deliveries and rapid operator double-clicks can race within milliseconds. An in-memory thread lock catches duplicate requests inside the same process, while a unique constraint on `idempotency_key` in the `payment_execution_claims` table ensures safety across processes. Duplicate attempts simply return the existing claim.
+
+4. LLM failures fall back silently to heuristics. Third-party model endpoints inevitably hit rate limits (HTTP 429) or transient timeouts. Rather than blocking the recovery pipeline, the diagnosis node falls back to deterministic rules that assign recovery strategies without disruption.
+
+5. Threshold tuning beats a default 0.50 probability cutoff. In payment recovery, the cost of an automated intervention (like a ₹5 payment link) is far smaller than the recovered order value. Sweeping candidate thresholds on development data showed that lowering τ to 0.35 captured ₹30,846.87 in additional recovered revenue at an incremental action cost of just ₹72.00.
 
 ---
 
@@ -233,9 +213,11 @@ The repository includes four pre-configured scenarios (`backend/routes/demo.py`)
 
 To evaluate whether intervention lift is genuinely causal rather than purely observational, RecoverAI includes a Propensity Score Inverse Probability Weighting (IPW) analysis (`evaluation/causal_lift.py`):
 
-* **Propensity Score Model**: Logistic regression estimating intervention probability $P(\text{treated} \mid \mathbf{X})$ across pre-treatment covariates, with weights clipped to $[0.01, 0.99]$.
-* **IPW-Adjusted Average Treatment Effect (ATE)**: **+1.31 percentage points** (95% Bootstrap CI: **[-2.50%, +5.56%]** over 1,000 iterations, `seed=42`).
-* **Methodological Scope**: Because the 95% bootstrap confidence interval spans zero, the treatment effect is not statistically distinguishable from zero in this offline benchmark. This analysis was conducted on synthetic historical logs and does not substitute for a live randomized A/B trial.
+Propensity score model: Logistic regression estimating intervention probability P(treated | X) across pre-treatment covariates, with weights clipped to [0.01, 0.99].
+
+Treatment effect estimate: The IPW-adjusted Average Treatment Effect (ATE) is +1.31 percentage points, with a 95% bootstrap confidence interval of [-2.50%, +5.56%] over 1,000 iterations (`seed=42`).
+
+Methodological scope: Because the 95% bootstrap confidence interval spans zero, the treatment effect is not statistically distinguishable from zero in this offline benchmark. This analysis was conducted on synthetic historical logs and does not substitute for a live randomized A/B trial.
 
 ### Sensitivity & Stress Testing
 
@@ -245,14 +227,14 @@ The threshold policy was evaluated across 6 stress scenarios (`evaluation/sensit
 
 ## Technology Stack
 
-* **Runtime**: Python 3.10+
-* **Workflow Orchestration**: LangGraph (`StateGraph`)
-* **Machine Learning**: scikit-learn (`Pipeline`, `ColumnTransformer`, `LogisticRegression`)
-* **API Backend**: FastAPI, Pydantic v2, Uvicorn
-* **Database & Persistence**: SQLAlchemy (SQLite default, PostgreSQL compatible)
-* **Payment Integration**: Razorpay Python SDK, HMAC-SHA256 webhook verification
-* **Dashboard**: Streamlit
-* **Testing**: Pytest, FastAPI TestClient
+- Runtime: Python 3.10+
+- Workflow Orchestration: LangGraph (`StateGraph`)
+- Machine Learning: scikit-learn (`Pipeline`, `ColumnTransformer`, `LogisticRegression`)
+- API Backend: FastAPI, Pydantic v2, Uvicorn
+- Database & Persistence: SQLAlchemy (SQLite default, PostgreSQL compatible)
+- Payment Integration: Razorpay Python SDK, HMAC-SHA256 webhook verification
+- Dashboard: Streamlit
+- Testing: Pytest, FastAPI TestClient
 
 ---
 
@@ -317,13 +299,13 @@ uvicorn backend.main:app --reload --port 8000
 
 ## Automated Testing
 
-The repository maintains an automated test suite verifying policy invariants, ML schemas, idempotency concurrency, PII redaction, and webhook signatures.
+The test suite covers policy invariants, ML schema validation, idempotency under concurrent execution, PII masking, and webhook signature verification.
 
 ```bash
 pytest tests/ -v
 ```
 
-**Verified Test Summary**: 158 passed across 21 test files (100% pass rate).
+Verified summary: 158 passed across 21 test files (100% pass rate).
 
 ---
 
