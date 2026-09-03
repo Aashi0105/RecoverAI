@@ -835,27 +835,28 @@ with tab_cmd:
         
         fn1, fn2, fn3, fn4, fn5 = st.columns(5)
         with fn1:
-            st.markdown("""
+            st.markdown(f"""
             <div class="funnel-card">
                 <div class="funnel-step-title">1. Failed Ingest</div>
-                <div class="funnel-step-val">633</div>
+                <div class="funnel-step-val">{metrics['total_failed_count']}</div>
                 <div class="funnel-step-pct">100% Risk</div>
             </div>
             """, unsafe_allow_html=True)
         with fn2:
-            st.markdown("""
+            st.markdown(f"""
             <div class="funnel-card">
                 <div class="funnel-step-title">2. AI Analyzed</div>
-                <div class="funnel-step-val">633</div>
+                <div class="funnel-step-val">{metrics['total_failed_count']}</div>
                 <div class="funnel-step-pct">100% Scored</div>
             </div>
             """, unsafe_allow_html=True)
         with fn3:
-            st.markdown("""
+            act_pct = (metrics['payments_selected'] / metrics['total_failed_count'] * 100) if metrics['total_failed_count'] > 0 else 0.0
+            st.markdown(f"""
             <div class="funnel-card" style="border-color:#3b82f6;">
                 <div class="funnel-step-title">3. Policy ACT</div>
-                <div class="funnel-step-val" style="color:#60a5fa;">361</div>
-                <div class="funnel-step-pct">57.0% Passed</div>
+                <div class="funnel-step-val" style="color:#60a5fa;">{metrics['payments_selected']}</div>
+                <div class="funnel-step-pct">{act_pct:.1f}% Passed</div>
             </div>
             """, unsafe_allow_html=True)
         with fn4:
