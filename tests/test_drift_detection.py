@@ -46,12 +46,14 @@ def test_calculate_psi_thresholds():
     assert status_sev == "SIGNIFICANT DRIFT"
 
 
-def test_baseline_snapshot_generation():
+def test_baseline_snapshot_generation(tmp_path):
     """
-    Verifies baseline snapshot generation on Development set.
+    Verifies baseline snapshot generation on Development set using an isolated tmp_path.
+    Prevents overwriting or race conditions on the production monitoring/baseline_snapshot.json.
     """
-    snapshot = generate_baseline_snapshot()
-    assert os.path.exists(SNAPSHOT_PATH)
+    tmp_snapshot_file = str(tmp_path / "baseline_snapshot.json")
+    snapshot = generate_baseline_snapshot(save_path=tmp_snapshot_file)
+    assert os.path.exists(tmp_snapshot_file)
     assert "numeric" in snapshot
     assert "categorical" in snapshot
     assert snapshot["metadata"]["dev_sample_size"] == 3581

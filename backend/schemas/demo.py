@@ -3,7 +3,7 @@ Pydantic Schemas for Demo Simulator API in RecoverAI.
 """
 
 from typing import Optional, List, Dict, Any
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 
 class DemoSimulationRequest(BaseModel):
@@ -12,11 +12,23 @@ class DemoSimulationRequest(BaseModel):
         default="auto_recovery",
         description="Demo scenario: 'auto_recovery', 'human_approval', 'fraud_block', 'low_probability'"
     )
+    scenario_id: Optional[str] = Field(
+        default=None,
+        description="Optional alias for scenario identifier"
+    )
     amount: Optional[float] = Field(default=None, description="Optional custom amount override")
     simulate_closed_loop: bool = Field(
         default=False,
         description="If true, simulates customer payment link completion via closed-loop webhook"
     )
+
+    @model_validator(mode="before")
+    @classmethod
+    def resolve_scenario_id(cls, data: Any) -> Any:
+        if isinstance(data, dict):
+            if "scenario_id" in data and ("scenario" not in data or data["scenario"] == "auto_recovery"):
+                data["scenario"] = data["scenario_id"]
+        return data
 
 
 class DemoWebhookSimulationRequest(BaseModel):

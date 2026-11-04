@@ -117,14 +117,18 @@ Calculated on the untouched held-out test set ($N=633$ failed payments, Total Re
 
 Verified via `evaluation/sensitivity_analysis.py` across 6 stress scenarios:
 
-| Scenario | Cost Multiplier | Threshold / Prob Shift | Realized Gross Uplift | True Net Uplift (₹) | True Net Uplift (%) | Status |
-| :--- | :---: | :---: | :---: | :---: | :---: | :---: |
-| **1. BASE CASE** | 1.0x | $\tau = 0.35, \Delta P = 0.00$ | +₹30,846.87 | **+₹30,774.87** | **+1.95%** | **Baseline** |
-| **2. ACTION COST +50%** | 1.5x | $\tau = 0.35, \Delta P = 0.00$ | +₹30,846.87 | **+₹30,738.87** | **+1.95%** | **Robust** |
-| **3. ACTION COST -50%** | 0.5x | $\tau = 0.35, \Delta P = 0.00$ | +₹30,846.87 | **+₹30,810.87** | **+1.95%** | **Robust** |
-| **4. THRESHOLD +0.05** | 1.0x | $\tau = 0.40, \Delta P = 0.00$ | +₹30,846.87 | **+₹30,774.87** | **+1.95%** | **Robust** |
-| **5. THRESHOLD -0.05** | 1.0x | $\tau = 0.30, \Delta P = 0.00$ | +₹30,846.87 | **+₹30,774.87** | **+1.95%** | **Robust** |
-| **6. PROBABILITY MISCALIBRATION** | 1.0x | $\tau = 0.35, \Delta P = -0.05$ | +₹42,966.73 | **+₹42,876.73** | **+2.71%** | **Robust** |
+| Scenario | Cost Multiplier | Threshold / Prob Shift | Realized Gross Uplift | True Net Uplift (₹) | True Net Uplift (%) | EV Realized Net Value (not causal) | Status |
+| :--- | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
+| **1. BASE CASE** | 1.0x | $\\tau = 0.35, \\Delta P = 0.00$ | +₹30,846.87 | **+₹30,774.87** | **+1.95%** | **₹916,565.44** | **Baseline** |
+| **2. ACTION COST +50%** | 1.5x | $\\tau = 0.35, \\Delta P = 0.00$ | +₹30,846.87 | **+₹30,738.87** | **+1.95%** | **₹914,470.94** | **Robust** |
+| **3. ACTION COST -50%** | 0.5x | $\\tau = 0.35, \\Delta P = 0.00$ | +₹30,846.87 | **+₹30,810.87** | **+1.95%** | **₹918,659.94** | **Robust** |
+| **4. THRESHOLD +0.10** | 1.0x | $\\tau = 0.45, \\Delta P = 0.00$ | +₹28,415.92 | **+₹28,359.92** | **+1.80%** | **₹914,150.49** | **Robust** |
+| **5. THRESHOLD -0.05** | 1.0x | $\\tau = 0.30, \\Delta P = 0.00$ | +₹30,846.87 | **+₹30,774.87** | **+1.95%** | **₹916,565.44** | **Robust** |
+| **6. PROBABILITY MISCALIBRATION** | 1.0x | $\\tau = 0.35, \\Delta P = -0.10$ | +₹46,807.18 | **+₹46,551.18** | **+2.95%** | **₹914,150.49** | **Robust** |
+
+> **Accounting & Interpretability Notes**:
+> * Realized net value of the selected payments stays between ₹914,150.49 and ₹918,659.94 across all scenarios (this is realized value, not causal lift; the causal estimate is reported separately in the Scientific Limitations).
+> * Scenario 6 uplift rises because the default policy (tau=0.50) loses more payments than the EV policy under a downward shift; it does not mean a worse model is better.
 
 
 ### C. Causal Treatment Effect (IPW) Evaluation
@@ -181,6 +185,8 @@ Implemented in [agent/nodes/policy.py](file:///c:/Users/Aashi/OneDrive/Desktop/R
 3. ❌ **No Automated Retraining**: Population Stability Index (PSI) feature drift monitoring emits structured telemetry alerts (`logs/drift_audit.jsonl`); automated model retraining is intentionally omitted to maintain system stability.
 4. ❌ **No Post-Hoc Probability Calibration**: Raw Logistic Regression sigmoid probabilities are used directly; explicit post-hoc calibration (Platt scaling / Isotonic regression) is omitted.
 5. ❌ **Single-Process Lock Scope**: Process thread lock `_LOCAL_EXECUTION_LOCK` is scoped to a single Python process; multi-process concurrency safety relies on database primary key constraints.
+
+6. ❌ **Empirical Probability Separation**: Model probabilities are strongly separated by failure reason on this synthetic dataset: actionable transactions cluster at $P \ge 0.4302$ and non-actionable transactions cluster at $P \le 0.3405$, creating an empirical probability dead zone in $[0.3405, 0.4302]$.
 
 ---
 

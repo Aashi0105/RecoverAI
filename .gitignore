@@ -75,6 +75,11 @@ Thumbs.db
 # Streamlit Cache
 .streamlit/
 
+# Node & Web Frontend
+node_modules/
+web/node_modules/
+web/dist/
+
 # Additional experiment models (not committed)
 ml/models/experiments/*.joblib
 !ml/models/experiments/exp_0_baseline.joblib
@@ -98,3 +103,10 @@ search_*.py
 trace_*.py
 update_*.py
 verify_*.py
+
+# Whitelist Official Repository Verification Scripts
+!run_metric_comparison_audit.py
+!test_dashboard_demo_paths.py
+!test_interactive_ui_sequences.py
+!verify_streamlit_duplication_fix.py
+!verify_canonical_metrics.py

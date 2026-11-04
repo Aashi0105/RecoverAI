@@ -48,3 +48,12 @@ def test_sensitivity_analysis_grid_contract():
     # 5. Positive True Net Uplift across all 6 scenarios
     for is_pos in results_df["Positive True Net Uplift?"]:
         assert is_pos == "Yes"
+
+    # 6. Verify EV Realized Net Value column and scenario naming
+    assert "EV Realized Net Value (not causal)" in results_df.columns
+    for ev_realized in results_df["_raw_ev_realized_net"]:
+        assert ev_realized > 0.0
+
+    sc_names = list(results_df["Scenario"])
+    assert "4. THRESHOLD +0.10 (tau=0.45)" in sc_names
+    assert "6. PROBABILITY MISCALIBRATION (-0.10)" in sc_names

@@ -221,7 +221,14 @@ Methodological scope: Because the 95% bootstrap confidence interval spans zero, 
 
 ### Sensitivity & Stress Testing
 
-The threshold policy was evaluated across 6 stress scenarios (`evaluation/sensitivity_analysis.py`) varying failure reason distributions, action costs, and payment method mixes. Across all scenarios, the EV-optimized policy maintained positive net recovery value relative to the zero-intervention baseline.
+The threshold policy was evaluated across 6 stress scenarios (`evaluation/sensitivity_analysis.py`) systematically varying action costs (1.5x and 0.5x cost multipliers), decision thresholds ($\tau = 0.45$ and $\tau = 0.30$), and model calibration via predicted probability shift ($\Delta P = -0.10$). Net business uplift is evaluated relative to the standard default baseline policy ($\tau = 0.50$). Across all 6 tested scenarios, the EV-optimized policy maintained robust positive true net uplift relative to the default policy (+₹28,359.92 to +₹46,551.18). Realized net value of the selected payments stays between ₹914,150.49 and ₹918,659.94 across all scenarios (this is realized value, not causal lift; the causal estimate is reported separately in the Scientific Limitations).
+
+### Scientific Limitations
+
+1. **Synthetic Observational Data**: All benchmarks are evaluated on synthetic historical transaction logs; real merchant production funds are never touched.
+2. **Empirical Probability Separation**: Model probabilities are strongly separated by failure reason on this synthetic dataset: actionable payments cluster at $P \ge 0.4302$ while non-actionable payments (`card_expired`, `invalid_card`, `suspected_risk`) cluster at $P \le 0.3405$, creating a probability dead zone between 0.3405 and 0.4302 where small threshold shifts produce invariant selection sets.
+3. **Observational Causal Lift**: Propensity Score IPW causal lift (+1.31% ATE; 95% CI [-2.50%, +5.56%]) includes zero and is not statistically distinguishable from zero, representing an offline benchmark rather than a randomized live trial.
+4. **Uncalibrated Model Probabilities**: Raw Logistic Regression sigmoid probabilities are evaluated directly; post-hoc Platt scaling or Isotonic calibration is omitted.
 
 ---
 
@@ -267,7 +274,7 @@ RecoverAI/
 ```bash
 # Clone repository
 git clone https://github.com/Aashi0105/RecoverAI.git
-cd "RecoverAI — AI Revenue Recovery Agent"
+cd RecoverAI
 
 # Create and activate virtual environment
 python -m venv venv
@@ -295,6 +302,12 @@ uvicorn backend.main:app --reload --port 8000
 # API documentation available at http://localhost:8000/docs
 ```
 
+### 4. Launch React + Vite Dashboard
+```bash
+cd web && npm install && npm run dev
+# Modern dashboard available at http://localhost:5173
+```
+
 ---
 
 ## Automated Testing
@@ -306,6 +319,26 @@ pytest tests/ -v
 ```
 
 Verified summary: 158 passed across 21 test files (100% pass rate).
+
+---
+
+## Verification Scripts
+
+All verification scripts run from the repository root:
+
+```bash
+# 1. Verify Top Metrics Alignment & Ground-Truth Calculations
+python run_metric_comparison_audit.py
+
+# 2. Verify 3 Critical Decision Paths (ACT / ESCALATE / REFUSE)
+python test_dashboard_demo_paths.py
+
+# 3. Verify Interactive UI Sequences (Scenarios A-D & HITL Queue)
+python test_interactive_ui_sequences.py
+
+# 4. Verify Streamlit Drift Audit Duplication Fix
+python verify_streamlit_duplication_fix.py
+```
 
 ---
 

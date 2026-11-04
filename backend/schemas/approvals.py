@@ -10,7 +10,7 @@ from pydantic import BaseModel, Field, ConfigDict
 class ApprovalDecisionRequest(BaseModel):
     """Payload submitted by merchant when approving or rejecting a transaction."""
     notes: Optional[str] = Field(default=None, description="Optional merchant reasoning or operational notes")
-    dry_run: bool = Field(default=False, description="If true, simulates execution without external API calls")
+    dry_run: bool = Field(default=True, description="If true, simulates execution without external API calls")
 
 
 class ApprovalItemResponse(BaseModel):

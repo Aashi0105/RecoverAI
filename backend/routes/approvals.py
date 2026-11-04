@@ -85,7 +85,7 @@ def approve_transaction(
     db: Session = Depends(get_db)
 ):
     notes = payload.notes if payload else None
-    dry_run = payload.dry_run if payload else False
+    dry_run = payload.dry_run if (payload and payload.dry_run is not None) else True
 
     success, code_label, result = approve_recovery_action(
         db=db,

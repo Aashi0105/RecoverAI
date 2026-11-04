@@ -5,9 +5,13 @@ Evaluates financial recovery performance under 6 scenario stress tests on the un
 1. BASE CASE: Current assumptions (Baseline Net: ₹885,790.57, EV-Optimal Net: ₹916,565.44, Net Uplift: +₹30,774.87, +1.95%).
 2. ACTION COST +50%: 1.5x action cost multiplier.
 3. ACTION COST -50%: 0.5x action cost multiplier.
-4. THRESHOLD +0.05: tau = 0.40 EV threshold.
+4. THRESHOLD +0.10: tau = 0.45 EV threshold (evaluates impact of stricter threshold on borderline actionable payments).
 5. THRESHOLD -0.05: tau = 0.30 EV threshold.
-6. PROBABILITY MISCALIBRATION: Shift predicted probabilities by -0.05.
+6. PROBABILITY MISCALIBRATION: Shift predicted probabilities by -0.10.
+
+Note on probability distribution: In this synthetic dataset, all 521 actionable test payments have
+predicted probabilities P >= 0.4302, while all 112 non-actionable payments have P <= 0.3405.
+The interval [0.3405, 0.4302] forms a probability dead zone where threshold changes have zero effect.
 """
 
 import os
@@ -47,8 +51,6 @@ def run_sensitivity_analysis() -> pd.DataFrame:
     exp0_features = EXP0_NUMERIC_FEATURES + EXP0_CATEGORICAL_FEATURES
     base_probs = pipeline.predict_proba(test_df[exp0_features])[:, 1]
 
-
-
     expected_total_risk = float(np.sum(test_df["amount"]))
 
     scenarios: List[Dict[str, Any]] = [
@@ -74,10 +76,10 @@ def run_sensitivity_analysis() -> pd.DataFrame:
             "prob_shift": 0.0
         },
         {
-            "name": "4. THRESHOLD +0.05 (tau=0.40)",
+            "name": "4. THRESHOLD +0.10 (tau=0.45)",
             "cost_mult": 1.0,
             "tau_def": 0.50,
-            "tau_opt": 0.40,
+            "tau_opt": 0.45,
             "prob_shift": 0.0
         },
         {
@@ -88,11 +90,11 @@ def run_sensitivity_analysis() -> pd.DataFrame:
             "prob_shift": 0.0
         },
         {
-            "name": "6. PROBABILITY MISCALIBRATION (-0.05)",
+            "name": "6. PROBABILITY MISCALIBRATION (-0.10)",
             "cost_mult": 1.0,
             "tau_def": 0.50,
             "tau_opt": 0.35,
-            "prob_shift": -0.05
+            "prob_shift": -0.10
         }
     ]
 
@@ -132,21 +134,21 @@ def run_sensitivity_analysis() -> pd.DataFrame:
             "Default Net Value": f"₹{def_net:,.2f}",
             "EV Gross Revenue": f"₹{opt_gross:,.2f}",
             "EV Action Costs": f"₹{opt_cost:,.2f}",
-            "EV Net Value": f"₹{opt_net:,.2f}",
+            "EV Realized Net Value (not causal)": f"₹{opt_net:,.2f}",
             "Gross Uplift": f"{'+' if gross_uplift >= 0 else '-'}\u20b9{abs(gross_uplift):,.2f}",
             "True Net Uplift (\u20b9)": f"{'+' if true_net_uplift >= 0 else '-'}\u20b9{abs(true_net_uplift):,.2f}",
-
             "True Net Uplift (%)": f"{true_pct_uplift:+.2f}%",
             "Positive True Net Uplift?": is_positive,
             "_raw_true_net_uplift": true_net_uplift,
-            "_raw_gross_uplift": gross_uplift
+            "_raw_gross_uplift": gross_uplift,
+            "_raw_ev_realized_net": opt_net
         })
 
     results_df = pd.DataFrame(results)
 
     # Save clean CSV artifact
     csv_out_path = os.path.join(PROJECT_ROOT, "evaluation", "sensitivity_results.csv")
-    csv_export_df = results_df.drop(columns=["_raw_true_net_uplift", "_raw_gross_uplift"])
+    csv_export_df = results_df.drop(columns=["_raw_true_net_uplift", "_raw_gross_uplift", "_raw_ev_realized_net"])
     csv_export_df.to_csv(csv_out_path, index=False)
 
     return results_df
@@ -159,7 +161,7 @@ def main():
 
     df_res = run_sensitivity_analysis()
 
-    display_df = df_res.drop(columns=["_raw_true_net_uplift", "_raw_gross_uplift"])
+    display_df = df_res.drop(columns=["_raw_true_net_uplift", "_raw_gross_uplift", "_raw_ev_realized_net"])
     print(display_df.to_string(index=False))
 
     positive_count = sum(1 for x in df_res["_raw_true_net_uplift"] if x > 0)
@@ -179,7 +181,6 @@ def main():
     print(" 📝 SUMMARY STATEMENT:")
     print(summary_statement)
     print("=" * 120 + "\n")
-
 
 
 if __name__ == "__main__":

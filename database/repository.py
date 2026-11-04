@@ -524,7 +524,7 @@ def approve_recovery_action(
     db: Session,
     transaction_id: str,
     human_notes: Optional[str] = None,
-    dry_run: bool = False
+    dry_run: bool = True
 ) -> Tuple[bool, str, Dict[str, Any]]:
     """
     Approves a transaction awaiting merchant review and triggers controlled execution.
