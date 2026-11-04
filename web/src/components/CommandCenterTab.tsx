@@ -88,13 +88,13 @@ export const CommandCenterTab: React.FC = () => {
 
   const chartData = metrics ? [
     {
-      name: 'Default Baseline (0.50)',
+      name: 'Default (τ=0.50)',
       Recovered: metrics.default_recovered,
       Cost: metrics.default_cost,
       NetProfit: metrics.default_net,
     },
     {
-      name: 'RecoverAI EV (0.35)',
+      name: 'RecoverAI EV (τ=0.35)',
       Recovered: metrics.opt_recovered,
       Cost: metrics.opt_cost,
       NetProfit: metrics.opt_net,
@@ -102,7 +102,7 @@ export const CommandCenterTab: React.FC = () => {
   ] : [];
 
   return (
-    <div className="p-8 space-y-8 max-w-7xl mx-auto">
+    <div className="p-4 sm:p-6 lg:p-8 space-y-6 sm:space-y-8 max-w-[1600px] mx-auto w-full min-w-0">
       {/* 1. TOP 5 KPI HERO SECTION */}
       <section>
         <div className="flex items-center justify-between mb-3">
@@ -114,70 +114,90 @@ export const CommandCenterTab: React.FC = () => {
           </span>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+        <div className="kpi-responsive-grid">
           {/* Card 1: Total Risk */}
-          <div className="bg-white p-5 rounded-xl border border-slate-200/90 shadow-xs hover:border-slate-300 transition-all">
-            <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wide block">
-              Total Revenue At Risk
-            </span>
-            <div className="mt-2 text-2xl font-black text-slate-900 tracking-tight">
-              {metrics?.formatted_total_risk ?? '—'}
+          <div className="kpi-col-top min-w-0 bg-white p-4 sm:p-5 rounded-xl border border-slate-200/90 shadow-xs hover:border-slate-300 transition-all flex flex-col justify-between">
+            <div>
+              <div className="min-h-[28px] sm:min-h-[30px] flex items-end">
+                <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wide block leading-tight">
+                  Total Revenue At Risk
+                </span>
+              </div>
+              <div className="mt-2 text-xl sm:text-2xl min-[1360px]:text-[clamp(1.15rem,1.4vw,1.5rem)] font-black text-slate-900 tracking-tight tabular-nums whitespace-nowrap overflow-visible">
+                {metrics?.formatted_total_risk ?? '—'}
+              </div>
             </div>
-            <div className="mt-2 flex items-center gap-1.5 text-xs text-slate-500">
+            <div className="mt-2.5 flex items-center gap-1.5 text-xs text-slate-500">
               <span className="font-semibold text-slate-700">{metrics?.total_failed_count ?? '—'}</span> failed payments
             </div>
           </div>
 
           {/* Card 2: Default Recovered */}
-          <div className="bg-white p-5 rounded-xl border border-slate-200/90 shadow-xs hover:border-slate-300 transition-all">
-            <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wide block">
-              Default Recovered (τ=0.50)
-            </span>
-            <div className="mt-2 text-2xl font-black text-slate-900 tracking-tight">
-              {metrics?.formatted_default_recovered ?? '—'}
+          <div className="kpi-col-top min-w-0 bg-white p-4 sm:p-5 rounded-xl border border-slate-200/90 shadow-xs hover:border-slate-300 transition-all flex flex-col justify-between">
+            <div>
+              <div className="min-h-[28px] sm:min-h-[30px] flex items-end">
+                <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wide block leading-tight">
+                  Default Recovered (τ=0.50)
+                </span>
+              </div>
+              <div className="mt-2 text-xl sm:text-2xl min-[1360px]:text-[clamp(1.15rem,1.4vw,1.5rem)] font-black text-slate-900 tracking-tight tabular-nums whitespace-nowrap overflow-visible">
+                {metrics?.formatted_default_recovered ?? '—'}
+              </div>
             </div>
-            <div className="mt-2 flex items-center gap-1 text-xs text-slate-500">
+            <div className="mt-2.5 flex items-center gap-1 text-xs text-slate-500">
               <span>Standard industry rule</span>
             </div>
           </div>
 
           {/* Card 3: EV Recovered */}
-          <div className="bg-white p-5 rounded-xl border border-blue-200 shadow-xs bg-blue-50/20 hover:border-blue-300 transition-all">
-            <span className="text-[11px] font-bold text-blue-700 uppercase tracking-wide block">
-              EV Recovered (τ=0.35)
-            </span>
-            <div className="mt-2 text-2xl font-black text-blue-700 tracking-tight">
-              {metrics?.formatted_opt_recovered ?? '—'}
+          <div className="kpi-col-top min-w-0 bg-white p-4 sm:p-5 rounded-xl border border-blue-200 shadow-xs bg-blue-50/20 hover:border-blue-300 transition-all flex flex-col justify-between">
+            <div>
+              <div className="min-h-[28px] sm:min-h-[30px] flex items-end">
+                <span className="text-[11px] font-bold text-blue-700 uppercase tracking-wide block leading-tight">
+                  EV Recovered (τ=0.35)
+                </span>
+              </div>
+              <div className="mt-2 text-xl sm:text-2xl min-[1360px]:text-[clamp(1.15rem,1.4vw,1.5rem)] font-black text-blue-700 tracking-tight tabular-nums whitespace-nowrap overflow-visible">
+                {metrics?.formatted_opt_recovered ?? '—'}
+              </div>
             </div>
-            <div className="mt-2 flex items-center gap-1 text-xs text-blue-700 font-semibold">
-              <ArrowUpRight className="w-3.5 h-3.5" />
+            <div className="mt-2.5 flex items-center gap-1 text-xs text-blue-700 font-semibold">
+              <ArrowUpRight className="w-3.5 h-3.5 shrink-0" />
               <span>{metrics ? `${metrics.recovery_rate_pct.toFixed(2)}% Total Risk Captured` : '—'}</span>
             </div>
           </div>
 
           {/* Card 4: True Net Uplift */}
-          <div className="bg-white p-5 rounded-xl border border-emerald-200 shadow-xs bg-emerald-50/30 hover:border-emerald-300 transition-all">
-            <span className="text-[11px] font-bold text-emerald-800 uppercase tracking-wide block">
-              True Net Uplift (Net-of-Costs)
-            </span>
-            <div className="mt-2 text-2xl font-black text-emerald-700 tracking-tight">
-              {metrics?.formatted_net_uplift_inr ?? '—'}
+          <div className="kpi-col-bottom min-w-0 bg-white p-4 sm:p-5 rounded-xl border border-emerald-200 shadow-xs bg-emerald-50/30 hover:border-emerald-300 transition-all flex flex-col justify-between">
+            <div>
+              <div className="min-h-[28px] sm:min-h-[30px] flex items-end">
+                <span className="text-[11px] font-bold text-emerald-800 uppercase tracking-wide block leading-tight">
+                  True Net Uplift (Net-of-Costs)
+                </span>
+              </div>
+              <div className="mt-2 text-xl sm:text-2xl min-[1360px]:text-[clamp(1.15rem,1.4vw,1.5rem)] font-black text-emerald-700 tracking-tight tabular-nums whitespace-nowrap overflow-visible">
+                {metrics?.formatted_net_uplift_inr ?? '—'}
+              </div>
             </div>
-            <div className="mt-2 flex items-center gap-1 text-xs font-bold text-emerald-800">
+            <div className="mt-2.5 flex items-center gap-1 text-xs font-bold text-emerald-800">
               <span>{metrics?.formatted_net_uplift_pct ? `${metrics.formatted_net_uplift_pct} pure net profit` : '—'}</span>
             </div>
           </div>
 
           {/* Card 5: Pending Reviews */}
-          <div className="bg-white p-5 rounded-xl border border-slate-200/90 shadow-xs hover:border-slate-300 transition-all">
-            <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wide block">
-              Pending Escalations
-            </span>
-            <div className="mt-2 text-2xl font-black text-slate-900 tracking-tight">
-              {metrics?.pending_review_count ?? 0}
+          <div className="kpi-col-bottom min-w-0 bg-white p-4 sm:p-5 rounded-xl border border-slate-200/90 shadow-xs hover:border-slate-300 transition-all flex flex-col justify-between">
+            <div>
+              <div className="min-h-[28px] sm:min-h-[30px] flex items-end">
+                <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wide block leading-tight">
+                  Pending Escalations
+                </span>
+              </div>
+              <div className="mt-2 text-xl sm:text-2xl min-[1360px]:text-[clamp(1.15rem,1.4vw,1.5rem)] font-black text-slate-900 tracking-tight tabular-nums whitespace-nowrap overflow-visible">
+                {metrics?.pending_review_count ?? 0}
+              </div>
             </div>
-            <div className="mt-2 flex items-center gap-1.5 text-xs text-amber-700 font-semibold">
-              <Clock className="w-3.5 h-3.5" />
+            <div className="mt-2.5 flex items-center gap-1.5 text-xs text-amber-700 font-semibold">
+              <Clock className="w-3.5 h-3.5 shrink-0" />
               <span>Human Approval Queue</span>
             </div>
           </div>
@@ -185,9 +205,9 @@ export const CommandCenterTab: React.FC = () => {
       </section>
 
       {/* 2. ECONOMIC COMPARISON CHART & CONVERSION FUNNEL */}
-      <section className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+      <section className="dashboard-middle-grid">
         {/* Comparison Economics Chart */}
-        <div className="lg:col-span-5 bg-white p-6 rounded-xl border border-slate-200 shadow-xs flex flex-col justify-between">
+        <div className="bg-white p-5 sm:p-6 rounded-xl border border-slate-200 shadow-xs flex flex-col justify-between min-w-0 overflow-hidden">
           <div>
             <div className="flex items-center justify-between mb-1">
               <h3 className="font-bold text-slate-900 text-sm">Policy Economics Comparison</h3>
@@ -199,19 +219,19 @@ export const CommandCenterTab: React.FC = () => {
               Comparing industry standard (τ=0.50) vs RecoverAI EV-optimized (τ=0.35)
             </p>
 
-            <div className="h-56 w-full">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={chartData} margin={{ top: 10, right: 10, left: -10, bottom: 0 }}>
+            <div className="h-60 w-full min-w-0 overflow-hidden relative">
+              <ResponsiveContainer width="99%" height={240} debounce={50}>
+                <BarChart data={chartData} margin={{ top: 10, right: 25, left: -5, bottom: 20 }}>
                   <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E2E8F0" />
-                  <XAxis dataKey="name" tick={{ fontSize: 11, fill: '#64748B' }} />
+                  <XAxis dataKey="name" tick={{ fontSize: 10, fill: '#64748B' }} interval={0} />
                   <YAxis tick={{ fontSize: 11, fill: '#64748B' }} tickFormatter={(val) => `₹${(val / 1000).toFixed(0)}k`} />
                   <Tooltip
                     formatter={(val: any) => [`₹${Number(val).toLocaleString('en-IN', { minimumFractionDigits: 2 })}`, '']}
                     contentStyle={{ borderRadius: 8, fontSize: 12, borderColor: '#CBD5E1' }}
                   />
-                  <Legend wrapperStyle={{ fontSize: 11 }} />
-                  <Bar dataKey="Recovered" fill="#2563EB" name="Recovered Revenue" radius={[4, 4, 0, 0]} isAnimationActive={false} />
-                  <Bar dataKey="NetProfit" fill="#16A34A" name="Net Realized Value" radius={[4, 4, 0, 0]} isAnimationActive={false} />
+                  <Legend wrapperStyle={{ fontSize: 11, bottom: 0 }} />
+                  <Bar dataKey="Recovered" fill="#2563EB" name="Recovered Revenue" radius={[4, 4, 0, 0]} maxBarSize={48} isAnimationActive={false} />
+                  <Bar dataKey="NetProfit" fill="#16A34A" name="Net Realized Value" radius={[4, 4, 0, 0]} maxBarSize={48} isAnimationActive={false} />
                 </BarChart>
               </ResponsiveContainer>
             </div>
@@ -224,7 +244,7 @@ export const CommandCenterTab: React.FC = () => {
         </div>
 
         {/* 5-Step End-to-End Recovery Funnel */}
-        <div className="lg:col-span-7 bg-white p-6 rounded-xl border border-slate-200 shadow-xs flex flex-col justify-between">
+        <div className="bg-white p-5 sm:p-6 rounded-xl border border-slate-200 shadow-xs flex flex-col justify-between min-w-0">
           <div>
             <div className="flex items-center justify-between mb-1">
               <h3 className="font-bold text-slate-900 text-sm">End-to-End Recovery Funnel</h3>
@@ -236,7 +256,7 @@ export const CommandCenterTab: React.FC = () => {
               Conversion progression from failure ingestion to settled funds
             </p>
 
-            <div className="grid grid-cols-5 gap-2.5">
+            <div className="funnel-responsive-grid items-stretch">
               {funnel?.steps.map((s) => {
                 let cardStyle = 'border-slate-200 bg-white';
                 let valColor = 'text-slate-900';
@@ -256,14 +276,17 @@ export const CommandCenterTab: React.FC = () => {
                 }
 
                 return (
-                  <div key={s.step} className={`p-3 rounded-lg border ${cardStyle} text-center flex flex-col justify-between`}>
-                    <div className="text-[10px] font-bold text-slate-500 uppercase tracking-wider truncate">
+                  <div
+                    key={s.step}
+                    className={`p-2.5 sm:p-3 rounded-lg border ${cardStyle} text-center flex flex-col justify-between h-full min-w-0 shadow-2xs transition-all`}
+                  >
+                    <div className="min-h-[38px] flex items-center justify-center text-[10px] sm:text-[11px] font-bold text-slate-600 uppercase tracking-wider leading-snug text-center break-words px-0.5">
                       {s.step}. {s.name}
                     </div>
-                    <div className={`text-xl font-black my-1 ${valColor}`}>
+                    <div className={`text-xl sm:text-2xl font-black my-1.5 tabular-nums ${valColor}`}>
                       {s.count}
                     </div>
-                    <div className={`text-[10px] font-bold ${pctColor}`}>
+                    <div className={`text-[10px] sm:text-[11px] font-bold ${pctColor} leading-tight`}>
                       {s.badge}
                     </div>
                   </div>
@@ -298,9 +321,9 @@ export const CommandCenterTab: React.FC = () => {
       </section>
 
       {/* 3. POLICY DECISION DISTRIBUTION & FAILURE CATEGORY INSIGHTS */}
-      <section className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <section className="dashboard-bottom-grid">
         {/* Decision Breakdown */}
-        <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-xs">
+        <div className="bg-white p-5 sm:p-6 rounded-xl border border-slate-200 shadow-xs min-w-0">
           <h3 className="font-bold text-slate-900 text-sm mb-1">
             Policy Decision Distribution (Test Set N=633)
           </h3>
@@ -308,7 +331,7 @@ export const CommandCenterTab: React.FC = () => {
             Deterministic governance breakdown preventing wasteful attempts
           </p>
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             {distribution?.decisions.map((d) => (
               <div
                 key={d.key}

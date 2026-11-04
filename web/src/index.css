@@ -24,3 +24,93 @@
 ::-webkit-scrollbar-thumb:hover {
   background: #94A3B8;
 }
+
+/* Responsive KPI Cards Grid */
+.kpi-responsive-grid {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: repeat(1, minmax(0, 1fr));
+}
+
+@media (min-width: 640px) {
+  .kpi-responsive-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+/* 1024px to 1359px (covers 1024px and 1280px viewports): Rearrange into balanced 3 + 2 rows */
+@media (min-width: 1024px) {
+  .kpi-responsive-grid {
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+  }
+  .kpi-col-top {
+    grid-column: span 2 / span 2;
+  }
+  .kpi-col-bottom {
+    grid-column: span 3 / span 3;
+  }
+}
+
+/* 1360px and above (covers 1366px, 1440px, 1704px viewports): Full 5-column single row */
+@media (min-width: 1360px) {
+  .kpi-responsive-grid {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+  }
+  .kpi-col-top,
+  .kpi-col-bottom {
+    grid-column: span 1 / span 1;
+  }
+}
+
+/* Responsive Middle Section (Economics Chart & Funnel) */
+.dashboard-middle-grid {
+  display: grid;
+  gap: 1.5rem;
+  grid-template-columns: minmax(0, 1fr);
+}
+
+@media (min-width: 1400px) {
+  .dashboard-middle-grid {
+    grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
+  }
+}
+
+/* Responsive Funnel Grid */
+.funnel-responsive-grid {
+  display: grid;
+  gap: 0.625rem;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+@media (min-width: 640px) {
+  .funnel-responsive-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+/* When funnel is stacked (below 1400px), it has full container width: 5 columns! */
+@media (min-width: 900px) and (max-width: 1399px) {
+  .funnel-responsive-grid {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+  }
+}
+
+/* When side-by-side (1400px and above): 5 columns in the 7fr right pane */
+@media (min-width: 1400px) {
+  .funnel-responsive-grid {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+  }
+}
+
+/* Bottom Split Section (Decisions & Categories) */
+.dashboard-bottom-grid {
+  display: grid;
+  gap: 1.5rem;
+  grid-template-columns: minmax(0, 1fr);
+}
+
+@media (min-width: 1400px) {
+  .dashboard-bottom-grid {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  }
+}
