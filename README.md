@@ -10,7 +10,7 @@ Failed payments cost online merchants revenue, but blindly retrying every failur
 [![LangGraph](https://img.shields.io/badge/Orchestration-LangGraph-purple.svg)](https://github.com/langchain-ai/langgraph)
 [![scikit-learn](https://img.shields.io/badge/ML-scikit--learn-F7931E.svg)](https://scikit-learn.org/)
 [![Razorpay SDK](https://img.shields.io/badge/Payments-Razorpay%20SDK-0284C7.svg)](https://razorpay.com/)
-[![Tests](https://img.shields.io/badge/Tests-158%20Passed%20(100%25)-brightgreen.svg)]()
+[![Tests](https://img.shields.io/badge/Tests-168%20Passed%20(100%25)-brightgreen.svg)]()
 
 ---
 
@@ -310,6 +310,55 @@ cd web && npm install && npm run dev
 
 ---
 
+## Deployment
+
+RecoverAI is configured for production cloud deployment with a split architecture: **FastAPI backend on Render** and **React + Vite dashboard on Netlify**.
+
+### 1. Backend Deployment (Render)
+
+Deploy the backend as a Render Web Service manually or via the provided [`render.yaml`](file:///c:/Users/Aashi/OneDrive/Desktop/RecoverAI%20%E2%80%94%20AI%20Revenue%20Recovery%20Agent/render.yaml):
+
+1. **Create Web Service**: Connect your GitHub repository to [Render](https://render.com).
+2. **Build & Start Settings**:
+   - **Environment**: Python 3
+   - **Build Command**: `pip install -r requirements.txt`
+   - **Start Command**: `uvicorn backend.main:app --host 0.0.0.0 --port $PORT`
+   - **Health Check Path**: `/health`
+3. **Configure Environment Variables**:
+   | Variable | Description / Recommended Value |
+   | :--- | :--- |
+   | `PYTHON_VERSION` | `3.12.0` |
+   | `DATABASE_URL` | PostgreSQL connection string (e.g. Neon: `postgresql://<user>:<password>@ep-...neon.tech/neondb?sslmode=require`). Handles `sslmode=require` automatically. |
+   | `CORS_ORIGINS` | Comma-separated allowed frontend origins: `https://your-site.netlify.app,http://localhost:5173,http://localhost:3000` |
+   | `RAZORPAY_KEY_ID` | Razorpay Test Mode Key ID |
+   | `RAZORPAY_KEY_SECRET` | Razorpay Test Mode Secret |
+   | `RAZORPAY_WEBHOOK_SECRET` | Razorpay Webhook Signing Secret |
+   | `LLM_ENABLED` | `false` (default zero-downtime heuristic fallback) or `true` |
+   | `LLM_API_KEY` | Optional Groq/OpenAI key (required only if `LLM_ENABLED=true`) |
+
+> [!NOTE]
+> **Render Free Tier Spin-Down (Cold Start)**:
+> Free Render web services spin down after 15 minutes of inactivity. The initial request after idle takes approximately **30–60 seconds** to wake up. The React frontend detects this state and displays a prominent *"Backend is waking up, please wait..."* banner with automatic polling and manual retry controls.
+
+---
+
+### 2. Frontend Deployment (Netlify)
+
+Deploy the React SPA dashboard to [Netlify](https://www.netlify.com):
+
+1. **Connect Repository**: Import the repository in Netlify.
+2. **Build Settings** (automatically pre-configured by [`web/netlify.toml`](file:///c:/Users/Aashi/OneDrive/Desktop/RecoverAI%20%E2%80%94%20AI%20Revenue%20Recovery%20Agent/web/netlify.toml)):
+   - **Base directory**: `web`
+   - **Build command**: `npm run build`
+   - **Publish directory**: `dist`
+3. **Environment Variables**:
+   | Variable | Value |
+   | :--- | :--- |
+   | `VITE_API_BASE_URL` | `https://your-render-service.onrender.com` (Your Render backend URL without trailing slash) |
+4. **SPA Redirects**: Single-page application routing is managed via `web/netlify.toml` and `web/public/_redirects` (`/* -> /index.html 200`), preventing 404 errors on deep-link refreshes.
+
+---
+
 ## Automated Testing
 
 The test suite covers policy invariants, ML schema validation, idempotency under concurrent execution, PII masking, and webhook signature verification.
@@ -318,7 +367,7 @@ The test suite covers policy invariants, ML schema validation, idempotency under
 pytest tests/ -v
 ```
 
-Verified summary: 158 passed across 21 test files (100% pass rate).
+Verified summary: 168 passed across 21 test files (100% pass rate).
 
 ---
 

@@ -27,6 +27,9 @@ class Settings(BaseSettings):
     # Policy file path
     POLICY_FILE_PATH: str = os.path.join("policies", "recovery_policy.yaml")
 
+    # CORS Allowed Origins (comma-separated string or list)
+    CORS_ORIGINS: str = "http://localhost:5173,http://localhost:3000"
+
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",

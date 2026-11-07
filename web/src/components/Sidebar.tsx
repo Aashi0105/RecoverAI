@@ -57,11 +57,11 @@ export const Sidebar: React.FC<SidebarProps> = ({
         {/* Live Backend Heartbeat */}
         <div className="mt-3.5 flex items-center justify-between bg-white px-3 py-2 rounded-lg border border-slate-200/80 text-xs">
           <div className="flex items-center gap-2">
-            <span className={`w-2 h-2 rounded-full ${serverOnline ? 'bg-emerald-500 animate-pulse' : 'bg-red-500'}`} />
+            <span className={`w-2 h-2 rounded-full ${serverOnline ? 'bg-emerald-500 animate-pulse' : 'bg-amber-500 animate-ping'}`} />
             <span className="font-semibold text-slate-700">API Backend</span>
           </div>
-          <span className={`text-[11px] font-bold ${serverOnline ? 'text-emerald-700' : 'text-red-700'}`}>
-            {serverOnline ? 'ONLINE :8000' : 'OFFLINE'}
+          <span className={`text-[11px] font-bold ${serverOnline ? 'text-emerald-700' : 'text-amber-700'}`}>
+            {serverOnline ? 'ONLINE' : 'WAKING UP...'}
           </span>
         </div>
       </div>

@@ -144,9 +144,21 @@ export const ApprovalsTab: React.FC<ApprovalsTabProps> = ({ onApprovalCountChang
 
       {/* Error state */}
       {error && (
-        <div className="p-4 bg-red-50 border border-red-200 rounded-xl text-xs text-red-800 flex items-center gap-2">
-          <AlertCircle className="w-4 h-4 text-red-600 shrink-0" />
-          <span>{error}</span>
+        <div className="p-4 bg-amber-50 border border-amber-300 rounded-xl text-xs text-amber-900 flex items-center justify-between gap-3">
+          <div className="flex items-center gap-2">
+            <AlertCircle className="w-4 h-4 text-amber-600 shrink-0" />
+            <span>
+              {error.includes('Failed to fetch') || error.includes('NetworkError') || error.includes('Load failed')
+                ? 'Backend is waking up, please wait... (Render free instances sleep after inactivity and take 30–60s).'
+                : error}
+            </span>
+          </div>
+          <button
+            onClick={loadApprovals}
+            className="px-2.5 py-1 bg-amber-600 hover:bg-amber-700 text-white rounded text-[11px] font-semibold shrink-0 cursor-pointer transition"
+          >
+            Retry
+          </button>
         </div>
       )}
 

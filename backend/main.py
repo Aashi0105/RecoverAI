@@ -1,3 +1,4 @@
+import os
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -10,9 +11,18 @@ from backend.routes.dashboard import router as dashboard_router
 from database.database import engine, Base
 import database.models  # Ensures ORM models are registered
 
+PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+os.makedirs(os.path.join(PROJECT_ROOT, "logs"), exist_ok=True)
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    # Ensure logs directory exists if missing
+    try:
+        os.makedirs(os.path.join(PROJECT_ROOT, "logs"), exist_ok=True)
+    except Exception as e:
+        print(f"[Warning] Could not initialize logs directory on startup: {e}")
+
     # Ensure database tables exist on FastAPI startup
     try:
         Base.metadata.create_all(bind=engine)
@@ -28,13 +38,19 @@ app = FastAPI(
     lifespan=lifespan
 )
 
-# CORS middleware for React / frontend development servers
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=[
+# CORS middleware: configure allowed origins via CORS_ORIGINS env var (comma-separated) with local dev fallback
+cors_origins_env = os.getenv("CORS_ORIGINS") or getattr(settings, "CORS_ORIGINS", "")
+if cors_origins_env and cors_origins_env.strip():
+    allowed_origins = [origin.strip() for origin in cors_origins_env.split(",") if origin.strip()]
+else:
+    allowed_origins = [
         "http://localhost:5173",
         "http://localhost:3000"
-    ],
+    ]
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=allowed_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

@@ -69,15 +69,19 @@ export const CommandCenterTab: React.FC = () => {
   if (error && !metrics) {
     return (
       <div className="p-8">
-        <div className="bg-red-50 border border-red-200 rounded-xl p-5 text-red-800">
+        <div className="bg-amber-50 border border-amber-300 rounded-xl p-5 text-amber-900">
           <div className="flex items-center gap-2 font-bold text-sm">
-            <AlertTriangle className="w-4 h-4 text-red-600" />
-            <span>Connection Failed</span>
+            <AlertTriangle className="w-4 h-4 text-amber-600" />
+            <span>Backend Connecting / Waking Up</span>
           </div>
-          <p className="text-xs mt-1 text-red-700">{error}</p>
+          <p className="text-xs mt-1.5 text-amber-800 leading-relaxed">
+            {error.includes('Failed to fetch') || error.includes('NetworkError') || error.includes('Load failed')
+              ? 'Backend is waking up, please wait... (Render free instances sleep after inactivity and take approximately 30–60 seconds to spin up).'
+              : error}
+          </p>
           <button
             onClick={loadData}
-            className="mt-3 px-3 py-1.5 bg-red-600 text-white rounded-lg text-xs font-semibold hover:bg-red-700"
+            className="mt-3.5 px-3.5 py-1.5 bg-amber-600 text-white rounded-lg text-xs font-semibold hover:bg-amber-700 shadow-xs transition"
           >
             Retry Connection
           </button>

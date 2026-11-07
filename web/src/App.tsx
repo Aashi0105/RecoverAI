@@ -48,11 +48,29 @@ export const App: React.FC = () => {
     loadScenarios();
     loadPendingCount();
     initSimulation();
-
-    // Check health periodically
-    const interval = setInterval(checkHealth, 30000);
-    return () => clearInterval(interval);
   }, []);
+
+  // Monitor server health: poll every 5s while waking up / offline, 30s when online
+  useEffect(() => {
+    const intervalTime = serverOnline ? 30000 : 5000;
+    const interval = setInterval(async () => {
+      try {
+        await api.health();
+        if (!serverOnline) {
+          // Backend has finished waking up: refresh active views
+          setServerOnline(true);
+          loadScenarios();
+          loadPendingCount();
+          setRefreshKey((prev) => prev + 1);
+        }
+      } catch {
+        if (serverOnline) {
+          setServerOnline(false);
+        }
+      }
+    }, intervalTime);
+    return () => clearInterval(interval);
+  }, [serverOnline]);
 
   const initSimulation = async () => {
     try {
@@ -155,6 +173,30 @@ export const App: React.FC = () => {
           onRefresh={handleRefresh}
           isLoading={isRefreshing}
         />
+
+        {/* Cold Start / Waking Up Banner for Free Cloud Instances (Render) */}
+        {!serverOnline && (
+          <div className="mx-4 sm:mx-6 lg:mx-8 mt-4 bg-amber-50 border border-amber-300 rounded-xl p-4 text-amber-900 shadow-sm flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 animate-pulse">
+            <div className="flex items-center gap-3">
+              <div className="w-5 h-5 border-2 border-amber-600 border-t-transparent rounded-full animate-spin shrink-0" />
+              <div>
+                <p className="text-xs sm:text-sm font-bold text-amber-900">
+                  Backend is waking up, please wait...
+                </p>
+                <p className="text-[11px] sm:text-xs text-amber-700 mt-0.5">
+                  Render free tier instances sleep after inactivity and typically take 30–60 seconds to spin up. Reconnecting automatically...
+                </p>
+              </div>
+            </div>
+            <button
+              onClick={handleRefresh}
+              disabled={isRefreshing}
+              className="px-3.5 py-1.5 bg-amber-600 hover:bg-amber-700 text-white rounded-lg text-xs font-semibold shadow-xs disabled:opacity-50 shrink-0 cursor-pointer transition"
+            >
+              {isRefreshing ? 'Checking...' : 'Retry Now'}
+            </button>
+          </div>
+        )}
 
         <main className="flex-1 overflow-y-auto">
           {activeTab === 'command-center' && (
