@@ -104,7 +104,7 @@ export const ApprovalsTab: React.FC<ApprovalsTabProps> = ({ onApprovalCountChang
             </span>
           </div>
           <p className="text-xs text-slate-500 mt-0.5">
-            Orders escalated due to high financial exposure (&gt; ₹8,500 threshold) or sensitive customer tier.
+            Orders escalated due to high financial exposure (₹8,500 or more threshold) or sensitive customer tier.
           </p>
         </div>
 

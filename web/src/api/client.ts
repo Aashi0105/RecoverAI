@@ -318,10 +318,13 @@ export const api = {
 
   // Demo Simulation Endpoints
   getScenarios: () => request<DemoScenario[]>('/api/v1/demo/scenarios'),
-  simulateScenario: (scenario_id: string) =>
+  simulateScenario: (scenario_id: string, amount?: number) =>
     request<SimulationResult>('/api/v1/demo/simulate', {
       method: 'POST',
-      body: JSON.stringify({ scenario_id }),
+      body: JSON.stringify({
+        scenario_id,
+        ...(amount !== undefined && !isNaN(amount) ? { amount } : {}),
+      }),
     }),
   simulateWebhook: (payload: any) =>
     request<any>('/api/v1/demo/simulate-webhook', {

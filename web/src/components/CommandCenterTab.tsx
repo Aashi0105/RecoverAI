@@ -310,7 +310,7 @@ export const CommandCenterTab: React.FC = () => {
               <span className="font-bold text-amber-600">
                 {funnel ? `${funnel.summary.escalated_count} Escalated` : '—'}
               </span>
-              <span className="text-slate-500 ml-1">(High-Value HITL &gt; ₹8,500)</span>
+              <span className="text-slate-500 ml-1">(High-Value HITL ₹8,500 or more)</span>
             </div>
             <div>
               <span className="font-bold text-emerald-700">

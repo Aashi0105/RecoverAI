@@ -82,7 +82,7 @@ ML predicts → LLM recommends → Deterministic policy decides → Human review
 
 A calibrated machine learning classifier estimates recovery probability from historical transaction features. Next, a language model analyzes failure telemetry to diagnose the root cause and propose recovery tactics, operating strictly as an advisor with no payment API credentials. A deterministic policy engine then evaluates non-overridable business rules. If a safety rule fails, execution halts immediately regardless of what the language model recommended.
 
-Transactions involving high values (>= ₹8,500) or borderline model confidence pause in a merchant approval queue for human review. Finally, no transaction is treated as recovered simply because a payment link was generated. The loop closes only when a cryptographically verified Razorpay webhook confirms payment settlement.
+Transactions involving high values (₹8,500 or more) or borderline model confidence pause in a merchant approval queue for human review. Finally, no transaction is treated as recovered simply because a payment link was generated. The loop closes only when a cryptographically verified Razorpay webhook confirms payment settlement.
 
 ---
 

@@ -1,14 +1,11 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Play,
   RotateCcw,
-
   AlertTriangle,
-
   ChevronDown,
   ChevronRight,
   ArrowRight
-
 } from 'lucide-react';
 import { api, type DemoScenario, type SimulationResult } from '../api/client';
 
@@ -63,7 +60,7 @@ export const SimulatorTab: React.FC<SimulatorTabProps> = ({
       expected_flow: 'Analysis -> Risk Flagged -> Policy REFUSE (Hard Safety) -> Execution Blocked -> Telemetry Audit',
       expected_decision: 'REFUSE',
       expected_action: 'none',
-      amount: 3200.0,
+      amount: 7500.0,
       failure_reason: 'suspected_risk',
       failure_category: 'risk_related',
     },
@@ -74,20 +71,55 @@ export const SimulatorTab: React.FC<SimulatorTabProps> = ({
       expected_flow: 'Analysis -> Low ML Probability (0.18) -> Policy REFUSE (Low EV) -> Action Saved -> Cost Avoided',
       expected_decision: 'REFUSE',
       expected_action: 'none',
-      amount: 1800.0,
-      failure_reason: 'invalid_card',
-      failure_category: 'hard_decline',
+      amount: 3200.0,
+      failure_reason: 'bank_declined',
+      failure_category: 'bank_decline',
     },
   ];
 
   const displayScenarios = scenarios.length > 0 ? scenarios : fallbackScenarios;
   const currentScenario = displayScenarios.find((s) => s.id === selectedScenarioId) || displayScenarios[0];
 
+  const [customAmount, setCustomAmount] = useState<string>(
+    currentScenario ? currentScenario.amount.toString() : '2500'
+  );
+
+  // Sync default amount when selectedScenarioId changes
+  useEffect(() => {
+    if (currentScenario) {
+      setCustomAmount(currentScenario.amount.toString());
+    }
+  }, [selectedScenarioId, currentScenario?.amount]);
+
+  // Validation logic: must be a positive number
+  const trimmedAmount = customAmount.trim();
+  const parsedAmount = parseFloat(trimmedAmount);
+  const isAmountEmpty = trimmedAmount === '';
+  const isAmountNaN = isNaN(parsedAmount);
+  const isAmountPositive = !isAmountNaN && parsedAmount > 0;
+
+  let amountValidationError: string | null = null;
+  if (isAmountEmpty) {
+    amountValidationError = 'Amount is required.';
+  } else if (isAmountNaN) {
+    amountValidationError = 'Please enter a valid numeric amount.';
+  } else if (parsedAmount <= 0) {
+    amountValidationError = 'Amount must be a positive number greater than ₹0.';
+  }
+
+  const boundaryChips = [
+    { label: '₹2,500', value: 2500, desc: 'Standard' },
+    { label: '₹8,499', value: 8499, desc: 'Just below threshold' },
+    { label: '₹8,500', value: 8500, desc: 'Threshold, escalates' },
+    { label: '₹14,500', value: 14500, desc: 'High-value HITL' },
+  ];
+
   const handleSimulate = async () => {
+    if (!isAmountPositive) return;
     setIsRunning(true);
     setError(null);
     try {
-      const res = await api.simulateScenario(selectedScenarioId);
+      const res = await api.simulateScenario(selectedScenarioId, parsedAmount);
       setSimulationResult(res);
       // Automatically expand step 5 (Policy Decision)
       setExpandedStep(5);
@@ -102,6 +134,9 @@ export const SimulatorTab: React.FC<SimulatorTabProps> = ({
     setSimulationResult(null);
     setError(null);
     setExpandedStep(null);
+    if (currentScenario) {
+      setCustomAmount(currentScenario.amount.toString());
+    }
   };
 
   const toggleStep = (stepNumber: number) => {
@@ -183,49 +218,140 @@ export const SimulatorTab: React.FC<SimulatorTabProps> = ({
         </div>
       </section>
 
-      {/* 2. ACTION CONTROLS & TRIGGER */}
-      <section className="bg-white p-6 rounded-xl border border-slate-200 shadow-xs flex flex-wrap items-center justify-between gap-4">
-        <div>
-          <div className="flex items-center gap-2">
-            <span className="text-sm font-bold text-slate-900">
-              Active Scenario: {currentScenario.name}
-            </span>
-            <span className="text-xs text-slate-500">
-              (Expected: <b className="text-slate-800">{currentScenario.expected_decision}</b>)
-            </span>
+      {/* 2. TRANSACTION AMOUNT & ACTION CONTROLS */}
+      <section className="bg-white p-6 rounded-xl border border-slate-200 shadow-xs space-y-5">
+        <div className="flex flex-wrap items-center justify-between gap-4 pb-4 border-b border-slate-100">
+          <div>
+            <div className="flex items-center gap-2">
+              <span className="text-sm font-bold text-slate-900">
+                Active Scenario: {currentScenario.name}
+              </span>
+              <span className="text-xs text-slate-500">
+                (Default Target: <b className="text-slate-800">{currentScenario.expected_decision}</b>)
+              </span>
+            </div>
+            <p className="text-xs text-slate-500 mt-0.5">
+              Triggers the full multi-stage LangGraph autonomous recovery lifecycle in dry-run test mode.
+            </p>
           </div>
-          <p className="text-xs text-slate-500 mt-0.5">
-            Triggers the full multi-stage LangGraph autonomous recovery lifecycle in dry-run test mode.
-          </p>
+
+          <div className="flex items-center gap-3">
+            <button
+              onClick={handleReset}
+              disabled={isRunning || !simulationResult}
+              className="flex items-center gap-1.5 px-4 py-2.5 rounded-lg border border-slate-200 text-xs font-semibold text-slate-600 bg-white hover:bg-slate-50 hover:text-slate-900 disabled:opacity-40 transition-all cursor-pointer"
+            >
+              <RotateCcw className="w-3.5 h-3.5" />
+              <span>Reset / Replay</span>
+            </button>
+
+            <button
+              onClick={handleSimulate}
+              disabled={isRunning || !isAmountPositive}
+              className="flex items-center gap-2 px-5 py-2.5 rounded-lg bg-blue-600 text-white text-xs font-bold hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed shadow-sm shadow-blue-600/20 transition-all cursor-pointer"
+            >
+              {isRunning ? (
+                <>
+                  <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                  <span>Running Agent Pipeline...</span>
+                </>
+              ) : (
+                <>
+                  <Play className="w-3.5 h-3.5 fill-white" />
+                  <span>Simulate Payment Failure &amp; Run Agent</span>
+                </>
+              )}
+            </button>
+          </div>
         </div>
 
-        <div className="flex items-center gap-3">
-          <button
-            onClick={handleReset}
-            disabled={isRunning || !simulationResult}
-            className="flex items-center gap-1.5 px-4 py-2.5 rounded-lg border border-slate-200 text-xs font-semibold text-slate-600 bg-white hover:bg-slate-50 hover:text-slate-900 disabled:opacity-40 transition-all"
-          >
-            <RotateCcw className="w-3.5 h-3.5" />
-            <span>Reset / Replay</span>
-          </button>
+        {/* Transaction Amount Control & Quick-Pick Boundary Chips */}
+        <div className="bg-slate-50/80 p-4 rounded-xl border border-slate-200/80 space-y-3">
+          <div className="flex flex-col md:flex-row md:items-start justify-between gap-4">
+            <div className="space-y-1.5 flex-1 max-w-xs">
+              <label htmlFor="custom-amount-input" className="block text-xs font-bold text-slate-700">
+                Transaction Amount (INR):
+              </label>
+              <div className="relative">
+                <span className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-500 font-semibold text-sm">
+                  ₹
+                </span>
+                <input
+                  id="custom-amount-input"
+                  type="number"
+                  step="500"
+                  min="1"
+                  value={customAmount}
+                  onChange={(e) => setCustomAmount(e.target.value)}
+                  className={`w-full pl-8 pr-3 py-2 text-sm bg-white border rounded-lg shadow-2xs font-semibold text-slate-900 focus:outline-hidden focus:ring-2 transition-all ${
+                    amountValidationError
+                      ? 'border-red-400 focus:ring-red-400/30'
+                      : 'border-slate-300 focus:ring-blue-500/30 focus:border-blue-500'
+                  }`}
+                  placeholder="Enter amount in ₹"
+                />
+              </div>
+              {amountValidationError && (
+                <p className="text-[11px] font-semibold text-red-600 mt-1 flex items-center gap-1">
+                  <AlertTriangle className="w-3 h-3 shrink-0" />
+                  <span>{amountValidationError}</span>
+                </p>
+              )}
+            </div>
 
-          <button
-            onClick={handleSimulate}
-            disabled={isRunning}
-            className="flex items-center gap-2 px-5 py-2.5 rounded-lg bg-blue-600 text-white text-xs font-bold hover:bg-blue-700 disabled:opacity-60 shadow-sm shadow-blue-600/20 transition-all"
-          >
-            {isRunning ? (
-              <>
-                <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                <span>Running Agent Pipeline...</span>
-              </>
-            ) : (
-              <>
-                <Play className="w-3.5 h-3.5 fill-white" />
-                <span>Simulate Payment Failure &amp; Run Agent</span>
-              </>
-            )}
-          </button>
+            {/* Quick Pick Boundary Chips */}
+            <div className="flex-1 space-y-1.5">
+              <span className="block text-xs font-bold text-slate-700">
+                Quick-Pick Boundary Values:
+              </span>
+              <div className="flex flex-wrap items-center gap-2">
+                {boundaryChips.map((chip) => {
+                  const isSelected = parsedAmount === chip.value;
+                  return (
+                    <button
+                      key={chip.value}
+                      type="button"
+                      onClick={() => setCustomAmount(chip.value.toString())}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all cursor-pointer ${
+                        isSelected
+                          ? 'bg-blue-600 text-white border-blue-600 shadow-2xs ring-2 ring-blue-600/20'
+                          : 'bg-white text-slate-700 border-slate-200 hover:border-slate-300 hover:bg-slate-50'
+                      }`}
+                      title={chip.desc}
+                    >
+                      <span>{chip.label}</span>
+                      <span className={`ml-1 text-[10px] ${isSelected ? 'text-blue-100' : 'text-slate-400'}`}>
+                        ({chip.desc})
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+
+          <p className="text-[11px] text-slate-500 leading-relaxed">
+            Amounts of ₹8,500 or more are escalated for human approval (unless blocked by fraud/risk rules).
+          </p>
+
+          {/* Contextual Policy Refusal Notice for Risk / Low EV */}
+          {selectedScenarioId === 'fraud_block' && (
+            <div className="p-2.5 bg-amber-50/90 border border-amber-200 rounded-lg text-[11px] text-amber-900 flex items-center gap-2">
+              <AlertTriangle className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+              <span>
+                <strong>Policy Safety Guard:</strong> Decision remains <strong>REFUSE</strong> for Scenario C regardless of amount due to hard fraud/risk rules (IP risk 0.92).
+              </span>
+            </div>
+          )}
+
+          {selectedScenarioId === 'low_probability' && (
+            <div className="p-2.5 bg-amber-50/90 border border-amber-200 rounded-lg text-[11px] text-amber-900 flex items-center gap-2">
+              <AlertTriangle className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+              <span>
+                <strong>Operational Policy Guard:</strong> Decision remains <strong>REFUSE</strong> for Scenario D regardless of amount due to negative expected value (P &lt; 0.35 threshold).
+              </span>
+            </div>
+          )}
         </div>
       </section>
 
@@ -255,7 +381,7 @@ export const SimulatorTab: React.FC<SimulatorTabProps> = ({
           }`}>
             <div className="flex flex-wrap items-center justify-between gap-4">
               <div>
-                <div className="flex items-center gap-3">
+                <div className="flex flex-wrap items-center gap-3">
                   <span className={`text-sm font-black px-3 py-1 rounded-md tracking-wider ${
                     simulationResult.policy_decision === 'ACT'
                       ? 'bg-emerald-600 text-white'
@@ -267,6 +393,9 @@ export const SimulatorTab: React.FC<SimulatorTabProps> = ({
                   </span>
                   <span className="text-xs font-bold text-slate-700">
                     Transaction ID: <code className="bg-white px-2 py-0.5 rounded border border-slate-200">{simulationResult.transaction_id}</code>
+                  </span>
+                  <span className="text-xs font-bold text-slate-700">
+                    Amount: <span className="font-extrabold text-blue-800 bg-white px-2 py-0.5 rounded border border-slate-200 font-mono">₹{simulationResult.amount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
                   </span>
                 </div>
                 <p className="text-xs font-medium text-slate-700 mt-2.5 max-w-3xl leading-relaxed">
@@ -288,8 +417,8 @@ export const SimulatorTab: React.FC<SimulatorTabProps> = ({
             {/* Quick Metrics Strip */}
             <div className="mt-4 pt-4 border-t border-slate-200/60 grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
               <div>
-                <span className="text-slate-500 block text-[11px]">Amount</span>
-                <span className="font-bold text-slate-800">
+                <span className="text-slate-500 block text-[11px]">Simulated Amount</span>
+                <span className="font-bold text-slate-900 text-sm font-mono">
                   ₹{simulationResult.amount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
                 </span>
               </div>
