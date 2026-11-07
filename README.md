@@ -4,6 +4,12 @@ Failed payments cost online merchants revenue, but blindly retrying every failur
 
 ---
 
+### 🌐 Live Deployment
+- **Dashboard:** [https://spectacular-brioche-6f6104.netlify.app](https://spectacular-brioche-6f6104.netlify.app)
+- **API Docs:** [https://recover-ai-backend-bqni.onrender.com/docs](https://recover-ai-backend-bqni.onrender.com/docs)
+
+---
+
 [![Python 3.10+](https://img.shields.io/badge/Python-3.10%2B-blue.svg)](https://www.python.org/)
 [![FastAPI](https://img.shields.io/badge/API-FastAPI-009688.svg)](https://fastapi.tiangolo.com/)
 [![Streamlit](https://img.shields.io/badge/Frontend-Streamlit-FF4B4B.svg)](https://streamlit.io/)
@@ -313,6 +319,9 @@ cd web && npm install && npm run dev
 ## Deployment
 
 RecoverAI is configured for production cloud deployment with a split architecture: **FastAPI backend on Render** and **React + Vite dashboard on Netlify**.
+
+- **Live Dashboard:** [https://spectacular-brioche-6f6104.netlify.app](https://spectacular-brioche-6f6104.netlify.app)
+- **Live API Docs:** [https://recover-ai-backend-bqni.onrender.com/docs](https://recover-ai-backend-bqni.onrender.com/docs)
 
 ### 1. Backend Deployment (Render)
 
